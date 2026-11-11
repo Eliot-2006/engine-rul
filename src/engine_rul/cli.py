@@ -165,6 +165,21 @@ def cmd_report(a):
     return 0
 
 
+def cmd_export_dashboard(a):
+    from engine_rul.dashboard import export_dashboard
+
+    for p in export_dashboard(a.results_dir, a.out):
+        print(f"wrote {p}")
+    return 0
+
+
+def cmd_readme(a):
+    from engine_rul.dashboard import update_readme
+
+    print(f"updated {update_readme(a.results_dir)}")
+    return 0
+
+
 def cmd_predict(a):
     from engine_rul import data as D
     from engine_rul.inference import predict_engines
@@ -403,6 +418,20 @@ def build_parser() -> argparse.ArgumentParser:
     r2.add_argument("--out", default="reports")
     r2.add_argument("--no-readme", action="store_true")
     r2.set_defaults(fn=cmd_report_phase2)
+
+    ed = sub.add_parser(
+        "export-dashboard",
+        help="write validated dashboard JSON from committed results (no training)",
+    )
+    ed.add_argument("--results-dir", default="results")
+    ed.add_argument("--out", default="dashboard/public/data")
+    ed.set_defaults(fn=cmd_export_dashboard)
+
+    rd = sub.add_parser(
+        "readme", help="refresh README result blocks and hero figure from committed results"
+    )
+    rd.add_argument("--results-dir", default="results")
+    rd.set_defaults(fn=cmd_readme)
     return p
 
 

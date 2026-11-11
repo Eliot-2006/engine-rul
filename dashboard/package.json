@@ -1,0 +1,23 @@
+{
+  "name": "engine-rul-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Static results dashboard for EngineRUL, built from committed experiment artifacts",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "check": "tsc --noEmit",
+    "build": "vite build && node scripts/check-dist.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@observablehq/plot": "0.6.17"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  }
+}

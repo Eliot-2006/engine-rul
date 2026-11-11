@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>EngineRUL results</title>
+    <meta
+      name="description"
+      content="Interactive results for EngineRUL: remaining-useful-life prediction on NASA C-MAPSS FD001, official test results and validation-only experiments."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3l4 6 3-3 5 7' fill='none' stroke='%23eb6834' stroke-width='2'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap top-inner">
+        <a class="brand" href="#overview">EngineRUL</a>
+        <nav aria-label="Sections">
+          <a href="#models">Models</a>
+          <a href="#engines">Engines</a>
+          <a href="#cv">Cross-validation</a>
+          <a href="#ablations">Ablations</a>
+          <a href="#uncertainty">Uncertainty</a>
+          <a href="#benchmarks">Benchmarks</a>
+          <a href="#limitations">Limitations</a>
+          <a class="gh" href="https://github.com/Eliot-2006/engine-rul">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <section id="overview" class="intro" aria-labelledby="overview-h">
+        <h1 id="overview-h">Remaining useful life of turbofan engines</h1>
+        <p class="lede">
+          EngineRUL predicts how many operating cycles a jet engine has left before failure, from the
+          history of its 21 sensors. It compares two naive baselines, Ridge regression, gradient
+          boosting and a PyTorch LSTM on NASA's simulated C-MAPSS FD001 benchmark under one
+          leakage-safe protocol, then stress-tests the result with nested cross-validation,
+          ablations and conformal prediction intervals.
+        </p>
+        <div id="cards" class="cards" aria-live="polite"><p class="status">Loading results…</p></div>
+        <div class="protocols">
+          <div class="protocol">
+            <span class="badge official">Official test</span>
+            <p>
+              Phase 1. One locked evaluation of frozen configurations on the <strong>100 official
+              FD001 test engines</strong>: one prediction per engine at its last observed cycle,
+              scored against the official, <strong>uncapped</strong> RUL labels.
+            </p>
+          </div>
+          <div class="protocol">
+            <span class="badge validation">Validation only</span>
+            <p>
+              Phase 2 (and Phase 1 model selection). Training engines only, many truncation points
+              per engine, truth <strong>capped at 125 cycles</strong>. Never used to change the
+              frozen models, and <strong>not comparable</strong> to the official test numbers.
+            </p>
+          </div>
+        </div>
+        <p class="disclaimer" id="disclaimer">
+          Simulated data. Not validated for real aircraft maintenance or flight-safety decisions.
+        </p>
+      </section>
+
+      <section id="models" aria-labelledby="models-h">
+        <div class="section-head">
+          <h2 id="models-h">Model comparison</h2>
+          <span class="badge official">Official test</span>
+        </div>
+        <p class="note" id="models-note"></p>
+        <div class="controls">
+          <div class="seg" role="radiogroup" aria-label="Metric" id="metric"></div>
+          <div class="checks" id="models-pick" role="group" aria-label="Models shown"></div>
+        </div>
+        <figure class="chart" id="models-chart" aria-describedby="models-cap"></figure>
+        <figcaption id="models-cap" class="cap"></figcaption>
+        <div class="table-wrap" id="models-table"></div>
+        <div class="two">
+          <div>
+            <h3>Paired differences (same 100 engines)</h3>
+            <figure class="chart" id="paired-chart"></figure>
+            <p class="cap">
+              Δ RMSE of the first model minus the second, median-seed models, with a 95% paired
+              engine-bootstrap CI. A difference is called clear only when the CI excludes 0.
+            </p>
+          </div>
+          <div class="prose">
+            <h3>Why gradient boosting beat the LSTM here</h3>
+            <p id="why"></p>
+            <ul>
+              <li>
+                <strong>Little data.</strong> 80 training engines give about 14,000 heavily
+                overlapping 30-cycle windows: enough for a shallow tree ensemble, thin for a
+                recurrent network.
+              </li>
+              <li>
+                <strong>Engineered trend features.</strong> Gradient boosting sees each sensor's
+                last value, mean, spread and slope over the 30-cycle window. In the ablations,
+                dropping the slopes costs it about 5 RMSE while the spread adds nothing measurable:
+                the degradation trend carries much of the signal, and the tree model gets it as an
+                explicit input.
+              </li>
+              <li>
+                <strong>Noisy selection.</strong> On the 20 Phase-1 validation engines the LSTM
+                ranked first; on the test set and in 15-fold nested CV gradient boosting did. With
+                so few engines, single-split rankings are fragile.
+              </li>
+            </ul>
+            <p class="small">
+              These are explanations consistent with the evidence, not controlled experiments; a
+              larger dataset (FD002–FD004) could change the ranking.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="engines" aria-labelledby="engines-h">
+        <div class="section-head">
+          <h2 id="engines-h">Engine predictions</h2>
+          <span class="badge official">Official test</span>
+        </div>
+        <p class="note">
+          Each test engine is cut off at an unknown point before failure. Every model makes
+          <strong>one scored prediction per engine</strong>, at its last observed cycle; no
+          prediction trajectories were evaluated on the test set. Click a dot or pick an engine.
+        </p>
+        <div class="controls">
+          <label class="field">Engine <select id="test-engine"></select></label>
+          <label class="field">Model <select id="test-model"></select></label>
+        </div>
+        <div class="two wide-left">
+          <figure class="chart" id="test-scatter"></figure>
+          <div id="test-detail" class="detail" aria-live="polite"></div>
+        </div>
+
+        <div class="section-head sub">
+          <h3>Full-life trajectories on validation engines</h3>
+          <span class="badge validation">Validation only</span>
+        </div>
+        <p class="note" id="traj-note"></p>
+        <div class="controls">
+          <label class="field">Validation engine <select id="val-engine"></select></label>
+          <div class="checks" id="traj-pick" role="group" aria-label="Models shown"></div>
+        </div>
+        <figure class="chart" id="traj-chart"></figure>
+        <p class="cap">
+          Solid black: true RUL (cycles until this engine failed). Dotted: the 125-cycle cap the
+          models are trained on, so early-life predictions plateau by design. Hover for values and
+          errors.
+        </p>
+      </section>
+
+      <section id="cv" aria-labelledby="cv-h">
+        <div class="section-head">
+          <h2 id="cv-h">Repeated nested cross-validation</h2>
+          <span class="badge validation">Validation only</span>
+        </div>
+        <div class="prose">
+          <p id="cv-intro"></p>
+          <p>
+            <strong>Why engine-grouped and nested?</strong> Windows from the same engine are highly
+            correlated, so every engine's data stays on one side of each split; otherwise a model is
+            scored on engines it has partly seen. Hyperparameters are chosen in inner folds only, so
+            the outer-fold score is not inflated by the selection itself.
+          </p>
+        </div>
+        <div class="controls">
+          <label class="field">Validation cut points <select id="cv-strategy"></select></label>
+        </div>
+        <figure class="chart" id="cv-folds"></figure>
+        <p class="cap" id="cv-folds-cap"></p>
+        <div class="table-wrap" id="cv-table"></div>
+        <div class="two">
+          <div>
+            <h3>Paired differences</h3>
+            <figure class="chart" id="cv-paired"></figure>
+            <p class="cap" id="cv-paired-cap"></p>
+          </div>
+          <div class="prose">
+            <h3>Ranking stability</h3>
+            <p id="cv-stability"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="ablations" aria-labelledby="ab-h">
+        <div class="section-head">
+          <h2 id="ab-h">Feature and architecture ablations</h2>
+          <span class="badge validation">Validation only</span>
+        </div>
+        <p class="note" id="ab-intro"></p>
+        <div class="controls">
+          <div class="seg" role="radiogroup" aria-label="Model" id="ab-family"></div>
+        </div>
+        <figure class="chart" id="ab-chart"></figure>
+        <p class="cap" id="ab-cap"></p>
+      </section>
+
+      <section id="uncertainty" aria-labelledby="unc-h">
+        <div class="section-head">
+          <h2 id="unc-h">Prediction uncertainty (split conformal)</h2>
+          <span class="badge validation">Validation only</span>
+        </div>
+        <div class="prose">
+          <p id="unc-intro"></p>
+        </div>
+        <div class="controls">
+          <label class="field">Method <select id="unc-method"></select></label>
+          <label class="field">Held-out cut points <select id="unc-strategy"></select></label>
+        </div>
+        <p class="method-note" id="unc-method-note"></p>
+        <div class="two">
+          <div>
+            <h3>Observed vs nominal coverage</h3>
+            <figure class="chart" id="unc-coverage"></figure>
+            <p class="cap">
+              Dot: coverage over held-out engines. Bar: range across the 15 outer folds. Dashed:
+              nominal level (perfect calibration).
+            </p>
+          </div>
+          <div>
+            <h3>Mean interval width</h3>
+            <figure class="chart" id="unc-width"></figure>
+            <p class="cap">Average full width of the interval, in cycles (narrower is more useful).</p>
+          </div>
+        </div>
+        <h3>Coverage by degradation stage</h3>
+        <div class="controls">
+          <div class="seg" role="radiogroup" aria-label="Nominal level" id="unc-level"></div>
+        </div>
+        <figure class="chart" id="unc-stage"></figure>
+        <p class="cap" id="unc-stage-cap"></p>
+      </section>
+
+      <section id="benchmarks" aria-labelledby="bench-h">
+        <div class="section-head">
+          <h2 id="bench-h">Inference performance</h2>
+          <span class="badge neutral">Benchmark</span>
+        </div>
+        <p class="note" id="bench-intro"></p>
+        <div class="controls">
+          <div class="seg" role="radiogroup" aria-label="Scope" id="bench-scope"></div>
+          <div class="seg" role="radiogroup" aria-label="Statistic" id="bench-stat"></div>
+        </div>
+        <figure class="chart" id="bench-chart"></figure>
+        <p class="cap" id="bench-cap"></p>
+        <div class="table-wrap" id="bench-table"></div>
+        <h3>Training cost (Phase 1, final models)</h3>
+        <div class="table-wrap" id="train-table"></div>
+      </section>
+
+      <section id="limitations" aria-labelledby="lim-h">
+        <h2 id="lim-h">Limitations and caveats</h2>
+        <ul class="caveats">
+          <li>
+            <strong>Simulated data, one subset.</strong> C-MAPSS FD001 has one operating condition and
+            one fault mode, and the test set has only 100 engines, so confidence intervals are wide.
+            Nothing here is validated for real aircraft.
+          </li>
+          <li>
+            <strong>Different protocols.</strong> Official test numbers use one cut point per engine
+            and uncapped labels; validation numbers use many cut points and truth capped at 125.
+            They are never compared directly.
+          </li>
+          <li>
+            <strong>Approximate CIs.</strong> Repeated CV folds share training engines, so engine
+            bootstrap intervals on pooled CV predictions likely understate training-set variability;
+            fold-to-fold spread is shown alongside.
+          </li>
+          <li>
+            <strong>Seeds.</strong> Gradient boosting's 5 seeds give bit-identical models, so they are
+            not independent evidence of stability. Ridge and the baselines are deterministic and
+            trained once. LSTM ablations use one CV repeat.
+          </li>
+          <li>
+            <strong>Interval assumptions.</strong> Conformal coverage is marginal, assumes exchangeable
+            engines and cut points drawn like the calibration ones, and does not carry over to the
+            official test set's truncation process.
+          </li>
+        </ul>
+        <div class="prose">
+          <h3>Reproduce</h3>
+          <pre><code>make setup data      # uv environment + checksum-verified FD001
+make test            # unit, leakage and end-to-end tests
+make reports         # reports, README and this dashboard's data from committed results
+make reproduce       # retrain Phase 1 and rerun Phase 2 (never reads test labels)</code></pre>
+          <p class="small">
+            Everything on this page is read from JSON generated by
+            <code>engine-rul export-dashboard</code> from the committed
+            <code>results/</code> artifacts. Sources and provenance:
+            <a href="https://github.com/Eliot-2006/engine-rul/blob/main/reports/report.md">Phase 1 report</a>
+            ·
+            <a href="https://github.com/Eliot-2006/engine-rul/blob/main/reports/phase2_report.md">Phase 2 report</a>
+            ·
+            <a href="https://github.com/Eliot-2006/engine-rul/blob/main/docs/phase2.md">methods</a>.
+          </p>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap foot">
+      <p id="foot"></p>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
