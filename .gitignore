@@ -13,7 +13,13 @@ results/*
 !results/final_runs.json
 .DS_Store
 # Phase 2 experiment outputs are published (validation-only); bulky fold models and
-# per-run directories are not. Source snapshots stay local (results/snapshots).
+# per-run directories are not. results/snapshots/ stays ignored (every dirty-tree run, tests
+# included, writes one); snapshots referenced by a published manifest are force-added
+# (`git add -f`), and tests/test_phase3.py fails if one is missing or its hash does not match.
 !results/phase2/
 results/phase2/**/models/
 results/phase2/repro/*/*/
+# dashboard: dependencies, build output and generated data (rebuilt from results/ by CI)
+dashboard/node_modules/
+dashboard/dist/
+dashboard/public/data/

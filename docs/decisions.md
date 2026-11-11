@@ -52,7 +52,18 @@ during implementation. Anything that changes a frozen config after a test evalua
 | P2-06 | Statistical unit = engine (per-engine mean errors, engine cluster bootstrap) | Endpoints/windows from one engine are strongly dependent. CIs on pooled CV predictions are labelled approximate (training-set overlap ignored). |
 | P2-07 | Ablations reuse the CV run's per-fold selected hyperparameters and change one thing | One dimension at a time, no re-tuning per variant (which would mix selection noise into Δ). |
 | P2-08 | Split conformal with a disjoint calibration role (60/15/25 of development engines); one-endpoint-per-engine calibration as the default | The only variant with a finite-sample guarantee under engine exchangeability; pooled variants are reported as empirical. |
-| P2-09 | Published artifacts are write-protected (`--force` needed) and experiments go to `results/phase2/<category>/<name>/` with a manifest and source snapshot | Prevents silent overwrites of frozen configs, published results and the test log. Consequence: `make reproduce` now needs `FORCE=--force`. |
+| P2-09 | Published artifacts are write-protected (`--force` needed) and experiments go to `results/phase2/<category>/<name>/` with a manifest and source snapshot | Prevents silent overwrites of frozen configs, published results and the test log. (Phase 3 split `make reproduce` so that it no longer runs the test evaluation; see P3-03.) |
+
+## Phase 3 decisions (presentation and reproducibility; no metric changes)
+
+| ID | Decision | Why |
+|---|---|---|
+| P3-01 | Static dashboard (Vite + TypeScript + Observable Plot) fed by JSON exported from committed artifacts; no backend or live inference | Free GitHub Pages hosting; nothing to keep running. Observable Plot (~100 KB gzipped bundle in total) instead of Plotly (~1 MB) covers tooltips and every chart type needed. |
+| P3-02 | One JSON file per evaluation protocol, tagged with `protocol`; the frontend refuses a file whose tag doesn't match the chart | Official-test and validation-only numbers use different targets and cut points and must never be plotted together by accident. |
+| P3-03 | `make reproduce` = Phase 1 training + Phase 2 + reports; the official test evaluation is `make official-test-eval CONFIRM=official-test` | Default workflows never read the test labels; re-evaluating is deliberate and still logged. |
+| P3-04 | Commit (force-add) the source snapshots referenced by published Phase-2 manifests; a test fails if a published manifest references an uncommitted or mismatching snapshot | They were git-ignored, so the recorded provenance pointed at files only on the development machine. The committed archives are the originals (content hashes verified), not re-creations. |
+| P3-05 | README result blocks and the hero figure are generated (`engine-rul readme`) and a test fails if they are stale | No hand-maintained numbers in the README. |
+| P3-06 | Exported numbers are rounded once, to display precision (cycles: 2 decimals) | Rounding 13.2648 to 13.265 and formatting again would show 13.27; the README and dashboard must show the published 13.26. |
 
 ## Post-test changes
 
@@ -73,6 +84,11 @@ Changes made after that evaluation affect presentation only and do not touch any
   Wording only; every number in `reports/report.md` is unchanged.
 - Phase 2: docstrings now state that a single-layer LSTM has no inter-layer (recurrent) dropout and
   only the head dropout is active, which applies to the frozen LSTM (1 layer, dropout 0.3).
+
+- Phase 3: README redesign; the generated README blocks show fewer bullets, and the Phase-2 table
+  now reports pooled CV RMSE next to its own CI (previously the fold mean sat next to the pooled
+  CI). New generated hero figure and a static dashboard built from the same committed numbers. The
+  official test set was not evaluated again and no metric, config or model changed.
 
 The validation→test ranking flip between LSTM and gradient boosting was **not** acted on: the LSTM
 was not re-tuned and gradient boosting was not re-selected after seeing test results.

@@ -18,9 +18,10 @@
 | EXP-01–03 | `engine-rul tune --config … --grid …` | train → validation | `results/final/tuning_<family>.json`, `configs/final/<family>.yaml` |
 | EXP-04 | `engine-rul sensitivity` | train → validation | `results/final/sensitivity.json` |
 | EXP-05 | `engine-rul final --family all --seeds 0 1 2 3 4` | train → validation (early stopping) | `results/final_runs.json`, `results/<run_id>/` |
-| EXP-06 | `engine-rul evaluate --split test --final --family all` | official test | `results/final/summary.json`, `results/test_evaluations.jsonl` |
+| EXP-06 | `engine-rul evaluate --split test --final --family all` (`make official-test-eval CONFIRM=official-test`) | official test | `results/final/summary.json`, `results/test_evaluations.jsonl` |
 | EXP-07 | `engine-rul benchmark --family all --devices cpu mps` | test **sensor windows** only | `results/final/benchmarks.json` |
 | — | `engine-rul report` | committed results | `reports/report.md`, figures, README block |
+| — | `engine-rul readme` / `engine-rul export-dashboard` | committed results | README blocks + `reports/figures/readme/hero.png` / `dashboard/public/data/*.json` |
 
 Grid budgets: Ridge 17 α values; HGB 24 configs; LSTM 8 configs (`hidden_size` {32, 64} × `num_layers` {1, 2} × `dropout` {0.1, 0.3}); LSTM training: Adam lr 1e-3, batch 256, ≤ 100 epochs, patience 10, min_delta 0.01, gradient clip 1.0. The Ridge and HGB grids were extended beyond the PRD because the first optimum sat on a grid edge (`docs/decisions.md` D-03).
 

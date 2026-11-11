@@ -882,25 +882,32 @@ def _update_readme(readme: Path, block: str) -> None:
 def readme_block(cv: dict, ab: dict | None, conf: dict | None) -> str:
     prim = cv["strategies"][cv["primary_strategy"]]
     fams = [f for f in P.FAMILY_ORDER if f in prim["families"]]
+    n_folds = cv["n_outer_folds"]  # total over repeats
     rows = []
     for f in fams:
         v, rk = prim["families"][f], prim["ranking"][f]
         rows.append(
             [
                 f"**{_L(f)}**",
+                f"{v['pooled']['capped']['rmse']:.2f} {_ci(v['rmse_ci95_engine_bootstrap']['capped'])}",
                 f"{v['fold_rmse_capped']['mean']:.2f} ± {v['fold_rmse_capped']['std']:.2f}",
-                _ci(v["rmse_ci95_engine_bootstrap"]["capped"]),
-                f"{rk['rank1_frac']:.0%}",
+                f"{round(rk['rank1_frac'] * n_folds)} / {n_folds}",
             ]
         )
     out = [
         _table(
-            ["Model", "CV RMSE (fold mean ± sd)", "Pooled 95% CI (approx.)", "Best in % of folds"],
+            [
+                "Model",
+                "Pooled CV RMSE [approx. 95% CI]",
+                f"Mean ± sd over {n_folds} folds",
+                "Best in folds",
+            ],
             rows,
         ),
         "",
-        f"<sub>{cv['n_repeats']} × 5-fold nested, engine-grouped CV on the {cv['n_engines']} training engines; uniform "
-        f"truncation endpoints; truth capped at {cv['truth_cap']}. Source: `results/phase2/cv/`.</sub>",
+        f"<sub>{cv['n_repeats']} × {n_folds // cv['n_repeats']}-fold nested, engine-grouped CV on the {cv['n_engines']} "
+        f"training engines; {prim['n_points']} uniform truncation cut points per model; truth capped at "
+        f"{cv['truth_cap']}. Source: `results/phase2/cv/`.</sub>",
         "",
     ]
     for p_ in prim["paired"]:
@@ -915,37 +922,32 @@ def readme_block(cv: dict, ab: dict | None, conf: dict | None) -> str:
                 f"95% CI {_ci(p_['ci95'])}; {verdict}."
             )
     out.append(
-        f"- Model rankings across uniform / late-life / stage-stratified validation endpoints: Kendall τ "
+        f"- Model rankings across uniform / late-life / stage-stratified cut points: Kendall τ "
         f"{_tau_range(cv)}."
     )
     if ab:
+        parts = []
         for f, rows_ in ab["families"].items():
             sig = [r for r in rows_ if r["variant"] != "base" and r["ci_excludes_0"]]
-            worse = ", ".join(
-                f"`{r['variant']}` ({r['delta_rmse']:+.1f})" for r in sig if r["delta_rmse"] > 0
-            )
-            better = ", ".join(
-                f"`{r['variant']}` ({r['delta_rmse']:+.1f})" for r in sig if r["delta_rmse"] < 0
-            )
-            out.append(
-                f"- Ablation, {_L(f)}: clearly worse than the full model: {worse or 'none'}; clearly better: "
-                f"{better or 'none'} (Δ RMSE, paired CI excludes 0)."
-            )
+            reps = len(rows_[0]["repeats"])
+            effects = ", ".join(f"`{r['variant']}` {r['delta_rmse']:+.1f}" for r in sig) or "none"
+            parts.append(f"{_L(f)}{' (1 repeat)' if reps == 1 else ''}: {effects}")
         out.append(
-            "- Ablation improvements are validation-only observations; the frozen Phase-1 models were not "
-            "changed, and adopting a variant would need a new frozen config and a fresh held-out test."
+            "- Ablations with a clear effect (Δ RMSE vs the full model, paired CI excludes 0): "
+            + "; ".join(parts)
+            + ". Validation-only: the frozen Phase-1 models were not changed."
         )
     if conf:
         s = pd.DataFrame(conf["summary"])
-        g = s[(s.method == "global_one_per_engine") & (s.level == 0.9)]
+        g = s[(s.method == "global_one_per_engine") & (s.level == 0.9) & (s.strategy == "uniform")]
         parts = [
-            f"{_L(f)} {g[(g.family == f) & (g.strategy == 'uniform')]['coverage'].iloc[0]:.0%} "
-            f"(mean width {g[(g.family == f) & (g.strategy == 'uniform')]['mean_width'].iloc[0]:.0f} cycles)"
+            f"{_L(f)} {g[g.family == f]['coverage'].iloc[0]:.0%} "
+            f"(mean width {g[g.family == f]['mean_width'].iloc[0]:.0f} cycles)"
             for f in P.FAMILY_ORDER
             if f in set(g.family)
         ]
         out.append(
-            "- 90% split-conformal prediction intervals, empirical coverage on held-out engines: "
+            "- 90% split-conformal intervals, empirical coverage on held-out engines: "
             + ", ".join(parts)
             + "."
         )
