@@ -13,7 +13,7 @@ import numpy as np
 
 from engine_rul import data as D
 from engine_rul.config import from_dict
-from engine_rul.features import WindowSet, make_windows
+from engine_rul.features import WindowSet, build_windows
 from engine_rul.models import load_model
 from engine_rul.models.lstm import _sync
 from engine_rul.preprocess import Preprocessor
@@ -48,13 +48,7 @@ def benchmark_run(run_dir: Path, device: str = "cpu", warmup=20, reps=200, tp_re
     test_df = D.load_test_features(cfg.data.data_dir, cfg.data.subset)
     last = test_df.groupby("unit")["cycle"].max()
     pts = np.column_stack([last.index.to_numpy(), last.to_numpy()])
-    ws = make_windows(
-        pre.transform(test_df),
-        pre.feature_names,
-        cfg.data.window,
-        end_points=pts,
-        pad_short=cfg.data.pad_short,
-    )
+    ws = build_windows(pre.transform(test_df), pre.feature_names, cfg.data, end_points=pts)
     model = load_model(run_dir, device=device)
     one = _subset(ws, slice(0, 1))
     lat = _time(lambda: model.predict(one), device, warmup, reps)  # BENCH-02
@@ -99,3 +93,114 @@ def run_benchmarks(
     out = results_dir / "final" / "benchmarks.json"
     out.write_text(json.dumps({"environment": environment_info(), "rows": rows}, indent=1) + "\n")
     return out
+
+
+# --------------------------------------------------------------------------- Phase 2 benchmarks
+MODEL_BATCHES = (1, 10, 100, 1000)
+E2E_ENGINES = (1, 10, 100)
+SCOPE = {
+    "model": "model.predict on already-built windows (sequence tensor / tabular features computed "
+    "inside predict for Ridge and HGB); excludes I/O, preprocessing and window construction",
+    "end_to_end": "Predictor.predict on raw sensor rows: z-score preprocessing, window construction, "
+    "feature extraction, prediction, clipping and the output DataFrame; excludes file parsing and "
+    "model loading (Predictor is constructed once)",
+}
+
+
+def _measure(fn, device: str, n_items: int) -> dict:
+    import tracemalloc
+
+    reps = 50 if n_items <= 100 else 20
+    t = _time(fn, device, warmup=5, reps=reps)
+    tracemalloc.start()
+    fn()
+    _sync(device)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    return {
+        "n": n_items,
+        "reps": reps,
+        "latency_ms_median": float(np.median(t) * 1e3),
+        "latency_ms_p95": float(np.quantile(t, 0.95) * 1e3),
+        "throughput_per_s": float(n_items / np.median(t)),
+        "python_peak_alloc_mb": peak / 2**20,
+    }
+
+
+def run_phase2_benchmarks(
+    families: list[str],
+    results_dir: str | Path = "results",
+    devices=("cpu",),
+    root: str | Path = "results/phase2",
+    name: str = "fd001_latency",
+    force: bool = False,
+) -> Path:
+    """Model-only vs end-to-end latency for the Phase-1 median-seed models. Inputs are *training*
+    file sensor rows (labels dropped), so the official test files are not read."""
+    import resource
+
+    from engine_rul.inference import Predictor
+    from engine_rul.provenance import experiment_dir, source_provenance, write_manifest
+
+    results_dir = Path(results_dir)
+    exp = experiment_dir(root, "benchmark", name, force)
+    summary = json.loads((results_dir / "final" / "summary.json").read_text())
+    rows = []
+    for f in families:
+        fam = summary["families"][f]
+        run_dir = results_dir / fam["run_ids"][fam["seeds"].index(fam["median_seed"])]
+        for dev in devices if f == "lstm" else ("cpu",):
+            pr = Predictor(run_dir, device=dev)
+            raw = D.load_train(pr.cfg.data.data_dir, pr.cfg.data.subset).drop(
+                columns=["rul"], errors="ignore"
+            )
+            units = np.sort(raw["unit"].unique())
+            ws = build_windows(pr.pre.transform(raw), pr.pre.feature_names, pr.cfg.data)
+            idx = np.random.default_rng(0).permutation(len(ws))
+            log.info("phase-2 benchmark %s on %s", f, dev)
+            for b in MODEL_BATCHES:
+                sub = _subset(ws, idx[:b])
+                rows.append(
+                    {
+                        "family": f,
+                        "device": dev,
+                        "scope": "model",
+                        "unit": "windows",
+                        **_measure(lambda s=sub, m=pr.model: m.predict(s), dev, b),
+                    }
+                )
+            for n in E2E_ENGINES:
+                df = raw[raw["unit"].isin(units[:n])]
+                rows.append(
+                    {
+                        "family": f,
+                        "device": dev,
+                        "scope": "end_to_end",
+                        "unit": "engines",
+                        "n_raw_rows": int(len(df)),
+                        **_measure(lambda d=df, p=pr: p.predict(d), dev, n),
+                    }
+                )
+    out = {
+        "scope_definitions": SCOPE,
+        "rows": rows,
+        "environment": environment_info(),
+        "process_max_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        / 2**20,  # bytes on macOS
+        "memory_note": "python_peak_alloc_mb is tracemalloc (Python allocations, incl. NumPy buffers; "
+        "excludes PyTorch's native allocator); process_max_rss_mb is the whole process peak",
+    }
+    (exp / "benchmarks.json").write_text(json.dumps(out, indent=1) + "\n")
+    write_manifest(
+        exp,
+        {
+            "category": "benchmark",
+            "name": name,
+            "families": families,
+            "devices": list(devices),
+            "source_runs": str(results_dir / "final" / "summary.json"),
+            "provenance": source_provenance(),
+            "official_test_set_used": False,
+        },
+    )
+    return exp

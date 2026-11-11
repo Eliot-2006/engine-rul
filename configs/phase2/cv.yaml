@@ -1,0 +1,26 @@
+# Phase 2 nested, repeated, engine-grouped cross-validation (validation only; never reads the
+# official test files). `engine-rul cv run --spec configs/phase2/cv.yaml`.
+name: fd001_nested_cv
+category: cv
+fold_file: splits/cv_fd001.json
+repeats: [0, 1, 2]
+# Development engines of each outer fold -> inner-train (fit, preprocessing) / inner-val
+# (hyperparameter selection, LSTM early stopping). First role takes the remainder.
+inner_fractions: {train: 0.8, val: 0.2}
+# LSTM early stopping on the inner-val selection endpoints (same quantity as model selection).
+early_stopping: endpoints
+endpoints:
+  n_per_engine: 10
+  min_cycle: 40          # >= largest ablation window, so all variants share endpoints
+  late_horizon: 125
+  seed: 20261111
+  strategies: [uniform, late, stratified]
+  primary: uniform       # used for selection; the other strategies are reported, not selected on
+# Frozen Phase-1 configs supply everything except the hyperparameters, which are re-selected
+# inside every outer fold from the Phase-1 grids.
+families:
+  constant: {config: configs/final/constant.yaml}
+  life_prior: {config: configs/final/life_prior.yaml}
+  ridge: {config: configs/final/ridge.yaml, grid: configs/grids/ridge.yaml}
+  hgb: {config: configs/final/hgb.yaml, grid: configs/grids/hgb.yaml}
+  lstm: {config: configs/final/lstm.yaml, grid: configs/grids/lstm.yaml}

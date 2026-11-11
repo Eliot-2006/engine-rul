@@ -19,10 +19,11 @@ import yaml
 from engine_rul import data as D
 from engine_rul.config import Config, dump_config, load_config
 from engine_rul.errors import ConfigError
-from engine_rul.features import WindowSet, make_windows
+from engine_rul.features import WindowSet, build_windows
 from engine_rul.metrics import all_metrics
 from engine_rul.models import build_model
 from engine_rul.preprocess import Preprocessor
+from engine_rul.provenance import refuse_overwrite, source_provenance
 from engine_rul.split import load_split
 from engine_rul.tracking import track_run
 from engine_rul.utils import (
@@ -75,11 +76,9 @@ def prepare(cfg: Config) -> Prepared:
     feats = pre.feature_names
     return Prepared(
         pre=pre,
-        train=make_windows(tr, feats, dc.window, pad_short=dc.pad_short),
-        val_dense=make_windows(va, feats, dc.window, pad_short=dc.pad_short),
-        val_points=make_windows(
-            va, feats, dc.window, end_points=split.val_eval_points, pad_short=dc.pad_short
-        ),
+        train=build_windows(tr, feats, dc),
+        val_dense=build_windows(va, feats, dc),
+        val_points=build_windows(va, feats, dc, end_points=split.val_eval_points),
         data_sha256=sha256_file(train_path),
         split_sha256=sha256_file(dc.split_file),
     )
@@ -118,6 +117,7 @@ def train_one(cfg: Config, stage: str = "dev", prepared: Prepared | None = None)
         "config_hash": cfg.hash(),
         "seed": cfg.seed,
         "git": git_info(),
+        "provenance": source_provenance(),
         "data_sha256": prep.data_sha256,
         "split_sha256": prep.split_sha256,
         "preprocessor_sha256": canonical_hash(pre_dict),
@@ -129,7 +129,8 @@ def train_one(cfg: Config, stage: str = "dev", prepared: Prepared | None = None)
     model = build_model(cfg)
     with track_run(cfg, stage, record) as run:
         t0 = time.perf_counter()
-        fit_info = model.fit(prep.train, prep.val_dense, cfg, workdir=run.dir, tracker=run)
+        es_set = prep.val_points if cfg.train.early_stopping == "endpoints" else prep.val_dense
+        fit_info = model.fit(prep.train, es_set, cfg, workdir=run.dir, tracker=run)
         train_time = time.perf_counter() - t0
         p_points = np.clip(model.predict(prep.val_points), 0, None)  # ADR-13
         p_dense = np.clip(model.predict(prep.val_dense), 0, None)
@@ -207,6 +208,7 @@ def tune(
     grid_path: str | Path | None = None,
     out_dir: str | Path = FINAL_DIR,
     summary_dir: str | Path | None = None,
+    force: bool = False,
 ) -> Path:
     """Grid search on validation only; writes configs/final/<family>.yaml (EXP-01..03).
 
@@ -214,6 +216,9 @@ def tune(
     wins; grids are listed simplest-first."""
     grid = yaml.safe_load(Path(grid_path).read_text()) if grid_path else {}
     combos = _grid_combos(grid) if grid else [{}]
+    out = Path(out_dir) / f"{cfg.model.family}.yaml"
+    sdir = Path(summary_dir or Path(cfg.results_dir) / "final")
+    refuse_overwrite([out, sdir / f"tuning_{cfg.model.family}.json"], force)
     prep = prepare(cfg)
     rows = []
     for combo in combos:
@@ -232,7 +237,6 @@ def tune(
     best_score = min(r["score"] for r in rows)
     chosen = next(r for r in rows if r["score"] <= best_score + 0.01)
     best_cfg = cfg.replace(model={"params": chosen["params"]})
-    out = Path(out_dir) / f"{cfg.model.family}.yaml"
     dump_config(
         best_cfg,
         out,
@@ -242,7 +246,6 @@ def tune(
             f"Selected run: {chosen['run_id']}"
         ),
     )
-    sdir = Path(summary_dir or Path(cfg.results_dir) / "final")
     sdir.mkdir(parents=True, exist_ok=True)
     (sdir / f"tuning_{cfg.model.family}.json").write_text(
         json.dumps(
@@ -267,12 +270,19 @@ def tune(
     return out
 
 
-def sensitivity(spec_path: str | Path, results_dir: str | None = None) -> Path:
+def sensitivity(
+    spec_path: str | Path,
+    results_dir: str | None = None,
+    final_dir: str | Path = FINAL_DIR,
+    force: bool = False,
+) -> Path:
     """EXP-04: validation-only sensitivity to R_max and window length."""
     spec = yaml.safe_load(Path(spec_path).read_text())
+    out = Path(results_dir or "results") / "final" / "sensitivity.json"
+    refuse_overwrite([out], force)
     rows = []
     for family in spec["families"]:
-        base = load_config(FINAL_DIR / f"{family}.yaml")
+        base = load_config(Path(final_dir) / f"{family}.yaml")
         if results_dir:
             base = base.replace(results_dir=results_dir)
         for r_max, window in itertools.product(spec["r_max"], spec["window"]):
@@ -290,7 +300,6 @@ def sensitivity(spec_path: str | Path, results_dir: str | None = None) -> Path:
                     "val_nasa_mean_cap125": m["val_points_cap125"]["nasa_mean"],
                 }
             )
-    out = Path(results_dir or base.results_dir) / "final" / "sensitivity.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"spec": spec, "rows": rows}, indent=1) + "\n")
     return out
@@ -301,8 +310,19 @@ def final(
     seeds: list[int],
     results_dir: str | None = None,
     final_dir: str | Path = FINAL_DIR,
+    force: bool = False,
 ) -> Path:
     """EXP-05: train frozen configs from configs/final/ with several seeds (stage=final)."""
+    if not families:
+        raise ConfigError("no model families given")
+    registry = Path(results_dir or "results") / "final_runs.json"
+    if registry.exists() and not force:
+        clash = set(json.loads(registry.read_text())) & set(families)
+        if clash:
+            raise ConfigError(
+                f"{registry} already records final runs for {sorted(clash)}; use another --results-dir "
+                "or pass --force"
+            )
     runs: dict[str, list[str]] = {}
     out_root = None
     for family in families:
@@ -322,4 +342,68 @@ def final(
     existing = json.loads(out.read_text()) if out.exists() else {}
     existing.update(runs)
     out.write_text(json.dumps(existing, indent=1) + "\n")
+    return out
+
+
+def repro_check(
+    families: list[str],
+    seeds=(0,),
+    results_dir: str | Path = "results",
+    final_dir: str | Path = FINAL_DIR,
+    root: str | Path = "results/phase2",
+    name: str = "frozen_configs",
+    tol: float = 1e-6,
+    force: bool = False,
+) -> dict:
+    """Retrain frozen configs into an isolated directory and compare the validation RMSE with the
+    published results/final/summary.json. Never touches published artifacts or the test set."""
+    from engine_rul.provenance import experiment_dir, write_manifest
+
+    exp = experiment_dir(root, "repro", name, force)
+    summary = json.loads((Path(results_dir) / "final" / "summary.json").read_text())
+    rows = []
+    for fam in families:
+        pub = summary["families"][fam]
+        for seed in seeds:
+            if seed not in pub["seeds"]:
+                raise ConfigError(f"{fam}: seed {seed} not in published seeds {pub['seeds']}")
+            cfg = load_config(
+                Path(final_dir) / f"{fam}.yaml",
+                {
+                    "seed": seed,
+                    "results_dir": str(exp),
+                    "tracking": {"experiment": "fd001-phase2-repro"},
+                },
+            )
+            rec = train_one(cfg, stage="repro")
+            got = rec["metrics"]["val_points_capped"]["rmse"]
+            ref = pub["val_points_capped"]["rmse"]["per_seed"][pub["seeds"].index(seed)]
+            rows.append(
+                {
+                    "family": fam,
+                    "seed": seed,
+                    "run_id": rec["run_id"],
+                    "config_hash": rec["config_hash"],
+                    "config_hash_matches": rec["config_hash"] == pub["config_hash"],
+                    "published_val_rmse": ref,
+                    "reproduced_val_rmse": got,
+                    "abs_diff": abs(got - ref),
+                    "ok": rec["config_hash"] == pub["config_hash"] and abs(got - ref) <= tol,
+                }
+            )
+            log.info("repro %s seed %d: published %.6f reproduced %.6f", fam, seed, ref, got)
+    out = {"tolerance": tol, "all_ok": all(r["ok"] for r in rows), "rows": rows}
+    (exp / "repro.json").write_text(json.dumps(out, indent=1) + "\n")
+    write_manifest(
+        exp,
+        {
+            "category": "repro",
+            "name": name,
+            "families": families,
+            "seeds": list(seeds),
+            "tolerance": tol,
+            "provenance": source_provenance(),
+            "official_test_set_used": False,
+        },
+    )
     return out

@@ -15,7 +15,7 @@ import pandas as pd
 from engine_rul import data as D
 from engine_rul.config import from_dict, load_config
 from engine_rul.errors import TestSetLockError
-from engine_rul.features import make_windows
+from engine_rul.features import build_windows
 from engine_rul.metrics import (
     METRICS,
     all_metrics,
@@ -76,8 +76,12 @@ def evaluate_test_final(
     final_dir: str | Path = FINAL_DIR,
     note: str = "",
     log_path: str | Path | None = None,
+    force: bool = False,
 ) -> Path:
     results_dir = Path(results_dir)
+    from engine_rul.provenance import refuse_overwrite
+
+    refuse_overwrite([results_dir / "final" / "summary.json"], force)
     runs = json.loads((results_dir / "final_runs.json").read_text())
     log_path = Path(log_path or results_dir / "test_evaluations.jsonl")
     git = git_info()
@@ -113,12 +117,8 @@ def evaluate_test_final(
                 )
             test_df, y_test, test_sha = test_cache[key]
             pre = Preprocessor.from_dict(json.loads((run_dir / "preprocessor.json").read_text()))
-            ws = make_windows(
-                pre.transform(test_df),
-                pre.feature_names,
-                dc.window,
-                end_points=_last_points(test_df),
-                pad_short=dc.pad_short,
+            ws = build_windows(
+                pre.transform(test_df), pre.feature_names, dc, end_points=_last_points(test_df)
             )
             y = y_test[ws.unit - 1]  # label i <-> unit i+1 (DATA-21)
             pred = np.clip(load_model(run_dir).predict(ws), 0, None)

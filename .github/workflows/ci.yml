@@ -11,3 +11,6 @@ jobs:
       - run: uv run pytest -q -m "not data"
       - run: uv run engine-rul data download
       - run: uv run pytest -q -m data
+      # reproducibility smoke test: retrain the fast frozen configs in an isolated directory and
+      # compare with the published validation RMSE (cross-platform BLAS/OpenMP differences -> 1e-3)
+      - run: uv run engine-rul repro-check --family constant life_prior ridge hgb --tol 1e-3

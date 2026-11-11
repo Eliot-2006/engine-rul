@@ -27,6 +27,14 @@ def _ms(d, nd=2):
     return f"{d['mean']:,.{nd}f} ± {d['std']:,.{nd}f}" if d["std"] > 0 else f"{d['mean']:,.{nd}f}"
 
 
+def _seeds(fam: dict) -> str:
+    """Seed count; seeds whose runs were bit-identical (deterministic HGB) are not independent
+    evidence of stability, so they are labelled as such."""
+    n = len(fam["seeds"])
+    same = fam["val_points_capped"]["rmse"]["std"] == 0 and fam["test_primary"]["rmse"]["std"] == 0
+    return f"{n} (identical runs)" if n > 1 and same else str(n)
+
+
 def _table(header: list[str], rows: list[list]) -> str:
     out = ["| " + " | ".join(header) + " |", "|" + "|".join("---" for _ in header) + "|"]
     out += ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
@@ -65,7 +73,7 @@ def main_table(s: dict, fams: list[str], key="test_primary") -> str:
         rows.append(
             [
                 f"**{FAMILY_LABELS[f]}**",
-                len(fam["seeds"]),
+                _seeds(fam),
                 _ms(m["rmse"]),
                 _ms(m["mae"]),
                 _ms(m["nasa_sum"], 0),
@@ -109,8 +117,8 @@ def findings(s: dict, fams: list[str]) -> list[str]:
     best = min(fams, key=lambda f: s["families"][f]["test_primary"]["rmse"]["mean"])
     b = s["families"][best]["test_primary"]
     out.append(
-        f"Lowest mean test RMSE: **{FAMILY_LABELS[best]}** ({_ms(b['rmse'])} cycles over "
-        f"{len(s['families'][best]['seeds'])} seed(s); NASA score {_ms(b['nasa_sum'], 0)})."
+        f"Lowest mean test RMSE: **{FAMILY_LABELS[best]}** ({_ms(b['rmse'])} cycles; seeds: "
+        f"{_seeds(s['families'][best])}; NASA score {_ms(b['nasa_sum'], 0)})."
     )
     vbest = min(fams, key=lambda f: s["families"][f]["val_points_capped"]["rmse"]["mean"])
     if vbest != best:
@@ -295,7 +303,9 @@ def build_report(results_dir="results", out="reports", update_readme=True) -> Pa
     add(main_table(s, fams))
     add(
         "\n† Percentile bootstrap over test engines (2000 resamples) for the median-RMSE seed. "
-        "± is the sample std over seeds; deterministic models were trained once.\n"
+        "± is the sample std over seeds; deterministic models were trained once. Gradient boosting "
+        "without row subsampling is deterministic, so its 5 seeded runs are bit-identical and are "
+        "*not* independent evidence of stability.\n"
     )
     add("**Secondary — labels capped at R_max (literature-style):**\n")
     add(main_table(s, fams, "test_capped"))
@@ -487,7 +497,7 @@ def readme_block(r: dict, figs: dict) -> str:
                 f"[{ci[0]:.1f}, {ci[1]:.1f}]",
                 _ms(m["mae"]),
                 _ms(m["nasa_sum"], 0),
-                len(s["families"][f]["seeds"]),
+                _seeds(s["families"][f]),
             ]
         )
     lines = [

@@ -126,3 +126,75 @@ def stage_metrics(y_true, y_pred, bins=STAGE_BINS, min_n: int = 1) -> list[dict]
             }
         )
     return rows
+
+
+# --------------------------------------------------------------------------- Phase 2: engine-level
+# Endpoints from one engine are strongly correlated, so inference treats the *engine* as the unit:
+# per-engine mean errors are computed first, and bootstraps resample engines (cluster bootstrap).
+
+
+def engine_errors(units, y_true, y_pred) -> dict[str, np.ndarray]:
+    """Per-engine mean squared error, mean absolute error and mean NASA term (equal endpoint
+    weight within an engine). Returns arrays aligned with ``unit`` (sorted unique ids)."""
+    u = np.asarray(units)
+    t, p = _check(y_true, y_pred)
+    d = p - t
+    ids, inv = np.unique(u, return_inverse=True)
+    cnt = np.bincount(inv)
+
+    def mean(x):
+        return np.bincount(inv, weights=x) / cnt
+
+    return {
+        "unit": ids,
+        "mse": mean(d**2),
+        "ae": mean(np.abs(d)),
+        "nasa": mean(np.where(d < 0, np.exp(-d / 13.0) - 1.0, np.exp(d / 10.0) - 1.0)),
+        "bias": mean(d),
+        "n": cnt,
+    }
+
+
+def engine_metrics(e: dict) -> dict[str, float]:
+    """Pooled metrics from per-engine errors, every engine weighted equally."""
+    return {
+        "rmse": float(np.sqrt(e["mse"].mean())),
+        "mae": float(e["ae"].mean()),
+        "nasa_mean": float(e["nasa"].mean()),
+        "bias": float(e["bias"].mean()),
+        "n_engines": int(len(e["mse"])),
+    }
+
+
+def cluster_bootstrap_rmse(mse_by_engine, n_boot: int = 2000, seed: int = 0, alpha: float = 0.05):
+    """Percentile CI of sqrt(mean per-engine MSE), resampling engines."""
+    m = np.asarray(mse_by_engine, dtype=np.float64)
+    idx = np.random.default_rng(seed).integers(0, len(m), size=(n_boot, len(m)))
+    stats = np.sqrt(m[idx].mean(axis=1))
+    lo, hi = np.quantile(stats, [alpha / 2, 1 - alpha / 2])
+    return float(lo), float(hi)
+
+
+def paired_cluster_bootstrap(mse_a, mse_b, n_boot: int = 2000, seed: int = 0, alpha: float = 0.05):
+    """Delta RMSE (a - b) with a paired engine bootstrap; inputs aligned per engine."""
+    a = np.asarray(mse_a, dtype=np.float64)
+    b = np.asarray(mse_b, dtype=np.float64)
+    if a.shape != b.shape:
+        raise ValueError("per-engine arrays must be aligned")
+    idx = np.random.default_rng(seed).integers(0, len(a), size=(n_boot, len(a)))
+    diffs = np.sqrt(a[idx].mean(axis=1)) - np.sqrt(b[idx].mean(axis=1))
+    lo, hi = np.quantile(diffs, [alpha / 2, 1 - alpha / 2])
+    return float(np.sqrt(a.mean()) - np.sqrt(b.mean())), (float(lo), float(hi))
+
+
+def kendall_tau(a, b) -> float:
+    """Kendall's tau-a between two equal-length score vectors (O(n^2); n is tiny here)."""
+    a, b = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
+    n = len(a)
+    if n < 2:
+        return float("nan")
+    s = 0.0
+    for i in range(n):
+        for j in range(i + 1, n):
+            s += np.sign(a[i] - a[j]) * np.sign(b[i] - b[j])
+    return float(s / (n * (n - 1) / 2))
