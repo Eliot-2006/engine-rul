@@ -1,0 +1,168 @@
+{
+ "created_at_utc": "2026-11-11T05:01:11+00:00",
+ "category": "ablation",
+ "name": "fd001_ablation",
+ "spec_file": "configs/phase2/ablation.yaml",
+ "spec": {
+  "name": "fd001_ablation",
+  "category": "ablation",
+  "source_cv": "results/phase2/cv/fd001_nested_cv",
+  "repeats": [
+   0,
+   1,
+   2
+  ],
+  "lstm_repeats": [
+   0
+  ],
+  "variants": [
+   {
+    "name": "base",
+    "families": [
+     "ridge",
+     "hgb",
+     "lstm"
+    ]
+   },
+   {
+    "name": "sensors_only",
+    "families": [
+     "ridge",
+     "hgb",
+     "lstm"
+    ],
+    "data": {
+     "use_cycle": false
+    }
+   },
+   {
+    "name": "cycle_only",
+    "families": [
+     "ridge",
+     "hgb",
+     "lstm"
+    ],
+    "data": {
+     "use_sensors": false
+    }
+   },
+   {
+    "name": "stats_last",
+    "families": [
+     "ridge",
+     "hgb"
+    ],
+    "params": {
+     "feature_stats": [
+      "last"
+     ]
+    }
+   },
+   {
+    "name": "stats_last_mean",
+    "families": [
+     "ridge",
+     "hgb"
+    ],
+    "params": {
+     "feature_stats": [
+      "last",
+      "mean"
+     ]
+    }
+   },
+   {
+    "name": "stats_last_mean_slope",
+    "families": [
+     "ridge",
+     "hgb"
+    ],
+    "params": {
+     "feature_stats": [
+      "last",
+      "mean",
+      "slope"
+     ]
+    }
+   },
+   {
+    "name": "window_20",
+    "families": [
+     "lstm"
+    ],
+    "data": {
+     "window": 20
+    }
+   },
+   {
+    "name": "window_40",
+    "families": [
+     "lstm"
+    ],
+    "data": {
+     "window": 40
+    }
+   },
+   {
+    "name": "layers_1",
+    "families": [
+     "lstm"
+    ],
+    "params": {
+     "num_layers": 1
+    }
+   },
+   {
+    "name": "layers_2",
+    "families": [
+     "lstm"
+    ],
+    "params": {
+     "num_layers": 2
+    }
+   },
+   {
+    "name": "early_stop_dense",
+    "families": [
+     "lstm"
+    ],
+    "train": {
+     "early_stopping": "dense"
+    }
+   }
+  ]
+ },
+ "spec_sha256": "72ab71815829e84af0ae4a07b0079efeb44034b52cbef06d7cff47fc39ad380f",
+ "fold_file": "splits/cv_fd001.json",
+ "fold_file_sha256": "a38a58d1a1d35803544d0867209e967db005f13466eb3e0a1e018fbec051d7be",
+ "train_data_sha256": "963b5e22825b34d8b21c69e1aeb4af3e647050eb672ee8834ba4b5d91d2de0f8",
+ "provenance": {
+  "git_commit": "b618515d7c19cc17d678d6f5dacd27659ccd0211",
+  "git_dirty": true,
+  "source_snapshot": {
+   "sha256": "82a4446222b120597992a09de179780549e270d57dd9f5e0fe2d0074c5a5920a",
+   "path": "results/snapshots/82a4446222b12059.tar.gz",
+   "n_untracked": 10
+  }
+ },
+ "env": {
+  "os": "Darwin 27.0.0",
+  "machine": "arm64",
+  "cpu": "Apple M3 Pro",
+  "cpu_count": 11,
+  "ram_gb": 18.0,
+  "device": "cpu",
+  "python": "3.12.13",
+  "numpy": "2.5.4",
+  "pandas": "3.1.1",
+  "scikit_learn": "1.9.1",
+  "torch": "2.15.0",
+  "matplotlib": "3.11.2",
+  "mlflow": "3.18.0"
+ },
+ "official_test_set_used": false,
+ "source_cv": "results/phase2/cv/fd001_nested_cv",
+ "source_cv_spec_sha256": "857ea924a1c3443767ed09838edbff54d9fac0d9060557a9e2a8e992c5fd9175",
+ "wall_time_s": 781.8529975829879,
+ "r_max_truth_cap": 125
+}

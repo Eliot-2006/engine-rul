@@ -1,0 +1,61 @@
+{
+ "tolerance": 1e-06,
+ "all_ok": true,
+ "rows": [
+  {
+   "family": "constant",
+   "seed": 0,
+   "run_id": "constant-68aa15a3-s0-20261111T050156179078Z",
+   "config_hash": "68aa15a3e6e5dde6495e2df0ace2115e293450897d8c49dfaf35e12534c4fedd",
+   "config_hash_matches": true,
+   "published_val_rmse": 40.43990427895041,
+   "reproduced_val_rmse": 40.43990427895041,
+   "abs_diff": 0.0,
+   "ok": true
+  },
+  {
+   "family": "life_prior",
+   "seed": 0,
+   "run_id": "life_prior-19a0db3c-s0-20261111T050156934007Z",
+   "config_hash": "19a0db3c94d8b15a9da427f6befaef66268a4c77942fcbaaf6217cdc0826acdb",
+   "config_hash_matches": true,
+   "published_val_rmse": 30.929215090165965,
+   "reproduced_val_rmse": 30.929215090165965,
+   "abs_diff": 0.0,
+   "ok": true
+  },
+  {
+   "family": "ridge",
+   "seed": 0,
+   "run_id": "ridge-ea49f416-s0-20261111T050157141996Z",
+   "config_hash": "ea49f416cf35851ad7940a09159496e91bdef49dfe7f573674d85df0f8ef1fff",
+   "config_hash_matches": true,
+   "published_val_rmse": 15.884492853653418,
+   "reproduced_val_rmse": 15.884492853653418,
+   "abs_diff": 0.0,
+   "ok": true
+  },
+  {
+   "family": "hgb",
+   "seed": 0,
+   "run_id": "hgb-5519d90b-s0-20261111T050157530710Z",
+   "config_hash": "5519d90b9a21c7fa6d8ca8191c6857a60e578eaabb3cc552ee2522f2909d05fe",
+   "config_hash_matches": true,
+   "published_val_rmse": 13.996559849506223,
+   "reproduced_val_rmse": 13.996559849506223,
+   "abs_diff": 0.0,
+   "ok": true
+  },
+  {
+   "family": "lstm",
+   "seed": 0,
+   "run_id": "lstm-21b05424-s0-20261111T050205516325Z",
+   "config_hash": "21b05424305dfbd35e4fc148cbce416e874f37bfed1524313a35afc1eac66595",
+   "config_hash_matches": true,
+   "published_val_rmse": 13.582891372265017,
+   "reproduced_val_rmse": 13.582891372265017,
+   "abs_diff": 0.0,
+   "ok": true
+  }
+ ]
+}
