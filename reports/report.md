@@ -46,10 +46,10 @@ Selection metric: RMSE on the 200 truncated validation points against truth capp
 | **Constant mean** | 1 | 41.88 | 36.15 | 18,982 | 189.82 | 5.22 | 0.45 | [37.94, 45.74] |
 | **Life prior (cycle only)** | 1 | 36.76 | 28.02 | 23,109 | 231.09 | -3.00 | 0.54 | [30.65, 42.99] |
 | **Ridge** | 1 | 16.74 | 13.49 | 459 | 4.59 | 0.48 | 0.51 | [14.33, 19.09] |
-| **Gradient boosting** | 5 | 13.26 | 9.86 | 244 | 2.44 | 0.42 | 0.58 | [11.08, 15.30] |
+| **Gradient boosting** | 5 (identical runs) | 13.26 | 9.86 | 244 | 2.44 | 0.42 | 0.58 | [11.08, 15.30] |
 | **LSTM** | 5 | 15.90 ± 0.42 | 11.89 ± 0.46 | 397 ± 23 | 3.97 ± 0.23 | 0.51 ± 0.43 | 0.63 | [13.33, 18.43] |
 
-† Percentile bootstrap over test engines (2000 resamples) for the median-RMSE seed. ± is the sample std over seeds; deterministic models were trained once.
+† Percentile bootstrap over test engines (2000 resamples) for the median-RMSE seed. ± is the sample std over seeds; deterministic models were trained once. Gradient boosting without row subsampling is deterministic, so its 5 seeded runs are bit-identical and are *not* independent evidence of stability.
 
 **Secondary — labels capped at R_max (literature-style):**
 
@@ -58,7 +58,7 @@ Selection metric: RMSE on the 200 truncated validation points against truth capp
 | **Constant mean** | 1 | 40.56 | 35.08 | 18,543 | 185.43 | 6.29 | 0.45 |
 | **Life prior (cycle only)** | 1 | 36.06 | 26.95 | 21,037 | 210.37 | -1.93 | 0.54 |
 | **Ridge** | 1 | 15.51 | 12.60 | 409 | 4.09 | 1.55 | 0.53 |
-| **Gradient boosting** | 5 | 12.03 | 8.82 | 214 | 2.14 | 1.49 | 0.59 |
+| **Gradient boosting** | 5 (identical runs) | 12.03 | 8.82 | 214 | 2.14 | 1.49 | 0.59 |
 | **LSTM** | 5 | 14.71 ± 0.42 | 10.82 ± 0.46 | 361 ± 27 | 3.61 ± 0.27 | 1.58 ± 0.43 | 0.63 |
 
 ![Model comparison](figures/results/model_comparison.png)
@@ -83,7 +83,7 @@ Negative Δ means model *a* has lower RMSE. Engines are resampled jointly for bo
 
 **Auto-generated findings:**
 
-- Lowest mean test RMSE: **Gradient boosting** (13.26 cycles over 5 seed(s); NASA score 244).
+- Lowest mean test RMSE: **Gradient boosting** (13.26 cycles; seeds: 5 (identical runs); NASA score 244).
 - On validation (the selection data), **LSTM** had the lowest RMSE (13.75 vs 14.00 for Gradient boosting); the ranking flipped on the test set, a reminder of how noisy 20 validation engines are.
 - LSTM has higher test RMSE than Gradient boosting (median seeds, Δ = +2.74, paired 95% CI [0.38, 5.21]).
 - Ridge has lower test RMSE than Life prior (cycle only) (median seeds, Δ = -20.02, paired 95% CI [-25.79, -14.23]).
