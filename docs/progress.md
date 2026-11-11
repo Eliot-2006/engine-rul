@@ -79,17 +79,18 @@ See [`decisions.md`](decisions.md): ADR-14 (CPU training), D-02 (`data verify` r
 
 ## Remaining work / known gaps
 
-- Code is **not committed** (per the owner's instruction that they make their own commits). Results record `git_dirty = true`; committing and re-running `make reproduce` would give clean provenance.
 - Published benchmark numbers in `docs/external_results.md` are unfilled: primary sources weren't accessible to verify (EVAL-41).
 - Byte-identity of mirror files with NASA's original ZIP remains unverified (needs the ZIP).
-- Phase 2 results record `git_dirty = true` with a local source snapshot (`results/snapshots/`, git-ignored); after committing, `make phase2 FORCE=--force` gives clean provenance.
+- Phase 1 results record `git_dirty = true` at commit `c457958` without a source snapshot (snapshots were added in Phase 2); Phase 2 results reference committed, hash-verified snapshots. Re-running from a clean commit would give `git_dirty = false`.
 - Phase-1 figures use tab10 green/red for gradient boosting/LSTM, which fails a colour-vision-deficiency check (ΔE 3.9); Phase-2 figures use a validated palette. Recolouring Phase-1 figures was left alone to keep that report intact.
-- Optional PRD extensions not started: OPT-2 (TCN), OPT-3 (FD002–FD004), OPT-4 (SHAP), OPT-5 (dashboard), OPT-6 (random forest), OPT-8 (Docker). (OPT-1 repeated CV and OPT-7 prediction intervals were done in Phase 2.)
+- Optional PRD extensions not started: OPT-2 (TCN), OPT-3 (FD002–FD004), OPT-4 (SHAP), OPT-6 (random forest), OPT-8 (Docker). (OPT-1 repeated CV and OPT-7 prediction intervals were done in Phase 2, OPT-5 the dashboard in Phase 3.)
 - Optional cleanup: add `mypy` with explicit fitted-state asserts.
 
 ## Continuation instructions
 
-1. `make setup data` on a fresh clone; `uv run pytest -q` should report 74 passed.
-2. Results can be regenerated without retraining via `uv run engine-rul report`, which reads `results/final/`.
-3. A full re-run is `make reproduce FORCE=--force` (~15 min CPU). It **overwrites** published Phase-1 artifacts and **appends** a new test-evaluation round to `results/test_evaluations.jsonl`, which should be explained in `docs/decisions.md`. To check reproducibility without touching anything, use `make repro-check`.
+1. `make setup data` on a fresh clone; `uv run pytest -q` runs the whole suite.
+2. Reports, README blocks and dashboard data are regenerated without retraining via `make reports` (reads `results/final/` and `results/phase2/` only).
+3. `make reproduce-phase1 FORCE=--force` (~15 min CPU) retrains Phase 1 and **overwrites** published Phase-1 run artifacts; it does not touch the test set. To check reproducibility without touching anything, use `make repro-check`.
 4. Phase 2: `make phase2` (~1.5 h CPU) re-runs CV, ablations, conformal and benchmarks into `results/phase2/` (refuses to overwrite; add `FORCE=--force`), then `make report-phase2`.
+5. The official test evaluation is a separate opt-in: `make official-test-eval CONFIRM=official-test`. It appends a round to `results/test_evaluations.jsonl`, which must be explained in `docs/decisions.md`.
+6. Dashboard: `make dashboard`; deployment is `.github/workflows/pages.yml` (needs *Settings → Pages → Source: GitHub Actions* once).

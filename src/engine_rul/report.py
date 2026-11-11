@@ -508,7 +508,19 @@ def readme_block(r: dict, figs: dict) -> str:
         f"<sub>Official FD001 test set, 100 engines, uncapped labels; mean ± std over seeds; CI = engine bootstrap "
         f"of the median seed. Source: `results/final/summary.json` (generated {s['generated_at'][:10]}).</sub>",
         "",
-        *[f"- {x}" for x in findings(s, fams)],
+        # README keeps the headline comparison only; every pair is in reports/report.md
+        *[
+            f"- {x}"
+            for x in findings(
+                {
+                    **s,
+                    "paired_comparisons": [
+                        p for p in s["paired_comparisons"] if {p["a"], p["b"]} == {"hgb", "lstm"}
+                    ],
+                },
+                fams,
+            )
+        ],
     ]
     return "\n".join(lines)
 

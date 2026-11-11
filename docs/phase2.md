@@ -110,6 +110,14 @@ LSTM variants use repeat 0 only (cost).
   untracked source files) under `results/snapshots/<sha>.tar.gz`; the spec and its SHA-256; the
   fold-file and training-data SHA-256; library versions and device; and
   `official_test_set_used: false`. Phase-1 style runs (`train_one`) also record `provenance`.
+* Snapshots referenced by a published manifest are committed with it (force-added: the
+  directory stays git-ignored because every dirty-tree run, tests included, writes one). The published Phase-2 experiments ran at commit `b618515` with
+  uncommitted changes; their two snapshots (`655f5c34…` for CV/conformal, `82a44462…` for
+  ablation/benchmark/repro) are the original archives written at run time, not re-creations.
+  `tests/test_phase3.py` recomputes each snapshot's content hash and checks it is committed. To
+  recover the exact evaluated source: `git checkout b618515`, extract the archive, `git apply
+  tracked.diff`, and copy the files under `untracked/` into place (checked: both diffs apply
+  cleanly on `b618515`).
 * Categories: `cv`, `ablation`, `validation_strategy`, `conformal`, `benchmark`, `repro`,
   `exploratory`. An existing non-empty experiment directory is never reused without `--force`.
   The same applies to `tune`/`sensitivity`/`final`/`evaluate --split test` and the published
@@ -147,6 +155,7 @@ make bench-phase2  #                    -> results/phase2/benchmark/fd001_latenc
 make repro-check   # all frozen configs -> results/phase2/repro/frozen_configs/
 make report-phase2 # reports/phase2_report.md + reports/figures/phase2/
 make phase2        # cv ablation conformal bench-phase2 report-phase2
+make reports       # report, report-phase2, README blocks and dashboard data (committed artifacts only)
 ```
 
 Add `FORCE=--force` to replace an existing experiment directory.

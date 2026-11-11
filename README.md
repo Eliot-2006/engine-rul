@@ -1,11 +1,82 @@
 # EngineRUL
 
-Predicting the **remaining useful life (RUL)** of turbofan engines from multivariate sensor histories, on NASA's C-MAPSS FD001 benchmark. The project runs end to end, from verified raw data to a single locked test evaluation: leakage-safe preprocessing, two naive baselines, Ridge, gradient boosting, and a PyTorch LSTM, all compared under one protocol with seed variance and bootstrap confidence intervals.
+Predicting how many cycles a turbofan engine has left before failure, from the history of its sensors. EngineRUL compares two naive baselines, Ridge regression, gradient boosting and a PyTorch LSTM on NASA's C-MAPSS FD001 benchmark under one leakage-safe protocol, evaluates the frozen models **once** on the official test set, and then stress-tests the result with validation-only nested cross-validation, ablations and conformal prediction intervals.
+
+**[Interactive results dashboard](https://eliot-2006.github.io/engine-rul/)** · [Phase 1 report](reports/report.md) · [Phase 2 report](reports/phase2_report.md) · [Methods](docs/phase2.md)
+
+[![ci](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml/badge.svg)](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml) Python · PyTorch · scikit-learn · pandas · NumPy · MLflow
 
 > [!IMPORTANT]
-> All results come from NASA's **simulated** C-MAPSS data. They are **not** validated for real aircraft maintenance or flight-safety decisions.
+> C-MAPSS is **simulated** data. These results are not validated for real aircraft maintenance or flight-safety decisions.
 
-## Results
+## Results at a glance
+
+<!-- GLANCE:START -->
+| Best official test RMSE | vs. cycle-only baseline | Evaluation |
+|:---:|:---:|:---:|
+| **13.26 cycles**<br><sub>gradient boosting</sub> | **−63.9% RMSE**<br><sub>36.76 → 13.26 cycles</sub> | **100 test engines**<br><sub>NASA C-MAPSS FD001</sub> |
+
+<sub>Official FD001 test split, one prediction per engine at its last observed cycle, scored against the official (uncapped) RUL labels; evaluated once with frozen configurations. RMSE is an error in cycles (lower is better), not an accuracy. Baseline: the *life prior*, which predicts from the current cycle only. Generated from `results/final/summary.json` by `engine-rul readme`.</sub>
+<!-- GLANCE:END -->
+
+![Left: gradient boosting's predicted vs true remaining useful life for the 100 official test engines, clustered around the diagonal. Right: test RMSE with 95% bootstrap intervals for all five models, from gradient boosting (13.26) to the constant baseline (41.88).](reports/figures/readme/hero.png)
+
+**Contents:** [Overview](#overview) · [Pipeline](#pipeline) · [Models and official results](#models-and-official-results) · [Validation-only findings](#validation-only-findings-phase-2) · [Quick start](#quick-start) · [Documentation](#documentation) · [Limitations](#limitations)
+
+## Overview
+
+**Remaining useful life (RUL)** is the number of operating cycles an engine has left before it fails. Predicting it lets maintenance be scheduled before a failure instead of on a fixed calendar or after a breakdown.
+
+Each of the 100 FD001 training engines starts healthy, develops a fault and runs to failure while 21 sensors (temperatures, pressures, fan and core speeds) are recorded every cycle. A single reading says little, but wear shows up as slow **trends** across many cycles, so every model here sees the last 30 cycles of an engine's history. The 100 test engines are cut off at an unknown point before failure, and the task is to predict how many cycles each had left.
+
+Errors are asymmetric: predicting **more** life than remains (a *late* prediction) is the dangerous direction, which the benchmark's NASA score penalizes exponentially harder.
+
+## Pipeline
+
+### Phase 1: model development and the locked test evaluation
+
+```mermaid
+flowchart LR
+  A[Raw FD001 files<br/>SHA-256 verified] --> B[Engine-level split<br/>80 train / 20 validation]
+  B --> C[Preprocess<br/>fit on train engines only]
+  C --> D[30-cycle windows<br/>+ 57 window statistics]
+  D --> E[Baselines · Ridge ·<br/>Gradient boosting · LSTM]
+  E --> F[Tune on validation engines<br/>→ frozen configs]
+  F --> G[Final training<br/>LSTM: 5 seeds · others: deterministic]
+  G --> H{{One logged evaluation<br/>on the official test set}}
+  H --> I[results/final → report,<br/>README, dashboard]
+```
+
+### Phase 2: validation-only reliability study (training engines only)
+
+```mermaid
+flowchart LR
+  T[100 training engines] --> O[3 × 5 engine-grouped<br/>outer folds]
+  O --> DEV[Development engines]
+  O --> HO[Held-out outer-fold engines]
+  DEV --> IN[Inner split:<br/>train · validation]
+  IN --> SEL[Fit + select<br/>hyperparameters]
+  SEL --> EV[Score on held-out engines<br/>identical cut points for every model]
+  HO --> EV
+  EV --> AB[One-factor ablations<br/>reuse each fold's selection]
+  DEV --> CAL[Separate calibration engines<br/>conformal runs only]
+  CAL --> INT[Prediction intervals,<br/>coverage on held-out engines]
+  EV & AB & INT --> R[phase2_report.md · README · dashboard]
+```
+
+The official test files are never read in Phase 2, and nothing in Phase 2 changed the frozen Phase 1 models. Calibration engines are never used for fitting, selection or coverage measurement.
+
+## Models and official results
+
+| Model | Input | Notes |
+|---|---|---|
+| Constant mean | — | Mean training target: the floor any model must beat |
+| Life prior | current cycle only | `mean lifetime − cycle`, capped: do sensors add anything beyond elapsed time? |
+| Ridge | 57 window features | last / mean / std / slope of 14 sensors over the window, plus cycle |
+| Gradient boosting | 57 window features | scikit-learn `HistGradientBoostingRegressor`, 24-config grid |
+| LSTM (PyTorch) | 30 × 15 sequence | 8-config grid, early stopping on validation engines |
+
+All models see the same 30-cycle history at the same evaluation points, are trained on the same 80 engines with a target capped at 125 cycles, and are clipped at 0.
 
 <!-- RESULTS:START -->
 | Model | Test RMSE ↓ | RMSE 95% CI | Test MAE ↓ | NASA score ↓ | Seeds |
@@ -21,140 +92,90 @@ Predicting the **remaining useful life (RUL)** of turbofan engines from multivar
 - Lowest mean test RMSE: **Gradient boosting** (13.26 cycles; seeds: 5 (identical runs); NASA score 244).
 - On validation (the selection data), **LSTM** had the lowest RMSE (13.75 vs 14.00 for Gradient boosting); the ranking flipped on the test set, a reminder of how noisy 20 validation engines are.
 - LSTM has higher test RMSE than Gradient boosting (median seeds, Δ = +2.74, paired 95% CI [0.38, 5.21]).
-- Ridge has lower test RMSE than Life prior (cycle only) (median seeds, Δ = -20.02, paired 95% CI [-25.79, -14.23]).
-- Gradient boosting has lower test RMSE than Life prior (cycle only) (median seeds, Δ = -23.50, paired 95% CI [-29.65, -17.29]).
-- LSTM has lower test RMSE than Life prior (cycle only) (median seeds, Δ = -20.76, paired 95% CI [-26.76, -14.79]).
-- Life prior (cycle only) vs Constant mean: no clear difference on 100 test engines (Δ = -5.12, 95% CI [-12.62, 1.87] includes 0).
 <!-- RESULTS:END -->
 
-![Test RMSE and NASA score per model](reports/figures/results/model_comparison.png)
-![Predicted vs true RUL on the official test set](reports/figures/results/pred_vs_true_test.png)
+**Why gradient boosting beat the LSTM.** These are explanations consistent with the evidence, not controlled experiments:
 
-Full tables (capped-truth variant, degradation-stage breakdown, worst engines, feature importance, benchmarks, sensitivity study, test-set usage log) are in **[`reports/report.md`](reports/report.md)**.
+- **Little data.** 80 training engines give about 14,000 heavily overlapping windows: enough for a shallow tree ensemble, thin for a recurrent network.
+- **Explicit trend features.** Gradient boosting gets each sensor's window slope as an input. Removing the slopes costs it about 5 RMSE in the Phase 2 ablations, while the window std adds nothing measurable.
+- **Noisy selection.** The LSTM ranked first on the 20 validation engines, but gradient boosting was better on the test set and in 13 of 15 nested-CV folds.
+
+Gradient boosting's five seeds produce bit-identical models, so they are not independent evidence of stability; Ridge and the baselines are deterministic and trained once. The capped-truth variant, degradation-stage breakdown, worst engines, feature importance, sensitivity study and the full test-set usage log are in [`reports/report.md`](reports/report.md).
+
+**Evaluation protocol.** Model selection used RMSE on 200 test-like truncation points of the 20 validation engines; the test set was never used for tuning, early stopping or feature choices. `evaluate --split test` only accepts frozen `stage=final` runs whose config hash matches `configs/final/` and appends every evaluation to [`results/test_evaluations.jsonl`](results/test_evaluations.jsonl) (one round, 13 runs). This lock is a procedural safeguard against accidental use, not a security boundary. Leakage tests check that preprocessing is fit on training engines only, windows never cross engines, and training fails if it touches test files ([`tests/test_leakage.py`](tests/test_leakage.py)). Published C-MAPSS numbers use different protocols and are not ranked against these results ([`docs/external_results.md`](docs/external_results.md)).
 
 ## Validation-only findings (Phase 2)
 
 > [!NOTE]
-> Everything in this section comes from cross-validation on the **training** engines. The official test set was not used again, and none of these results changed the Phase-1 models above. CV numbers use capped truth and many truncation points per engine, so they are **not comparable** to the test table.
+> Training engines only, many truncation cut points per engine, truth capped at 125. These numbers are **not comparable** to the official test table above, and none of them changed the Phase 1 models.
 
 <!-- PHASE2:START -->
-| Model | CV RMSE (fold mean ± sd) | Pooled 95% CI (approx.) | Best in % of folds |
+| Model | Pooled CV RMSE [approx. 95% CI] | Mean ± sd over 15 folds | Best in folds |
 |---|---|---|---|
-| **Constant mean** | 41.61 ± 1.60 | [41.15, 42.15] | 0% |
-| **Life prior (cycle only)** | 32.67 ± 1.95 | [28.96, 36.53] | 0% |
-| **Ridge** | 16.95 ± 0.96 | [16.05, 18.01] | 0% |
-| **Gradient boosting** | 13.92 ± 0.97 | [12.88, 15.15] | 87% |
-| **LSTM** | 15.13 ± 1.41 | [14.13, 16.27] | 13% |
+| **Constant mean** | 41.63 [41.15, 42.15] | 41.61 ± 1.60 | 0 / 15 |
+| **Life prior (cycle only)** | 32.72 [28.96, 36.53] | 32.67 ± 1.95 | 0 / 15 |
+| **Ridge** | 16.98 [16.05, 18.01] | 16.95 ± 0.96 | 0 / 15 |
+| **Gradient boosting** | 13.95 [12.88, 15.15] | 13.92 ± 0.97 | 13 / 15 |
+| **LSTM** | 15.19 [14.13, 16.27] | 15.13 ± 1.41 | 2 / 15 |
 
-<sub>3 × 5-fold nested, engine-grouped CV on the 100 training engines; uniform truncation endpoints; truth capped at 125. Source: `results/phase2/cv/`.</sub>
+<sub>3 × 5-fold nested, engine-grouped CV on the 100 training engines; 3000 uniform truncation cut points per model; truth capped at 125. Source: `results/phase2/cv/`.</sub>
 
 - Gradient boosting − LSTM: Δ RMSE = -1.23, paired engine-bootstrap 95% CI [-2.14, -0.36]; the CI excludes 0.
-- Model rankings across uniform / late-life / stage-stratified validation endpoints: Kendall τ = 1.00 for every pair.
-- Ablation, Ridge: clearly worse than the full model: `cycle_only` (+13.5), `stats_last` (+4.5), `stats_last_mean` (+3.9); clearly better: none (Δ RMSE, paired CI excludes 0).
-- Ablation, Gradient boosting: clearly worse than the full model: `cycle_only` (+15.0), `stats_last` (+5.0), `stats_last_mean` (+5.1); clearly better: none (Δ RMSE, paired CI excludes 0).
-- Ablation, LSTM: clearly worse than the full model: `sensors_only` (+1.0), `cycle_only` (+12.8), `window_20` (+1.6); clearly better: `window_40` (-1.1) (Δ RMSE, paired CI excludes 0).
-- Ablation improvements are validation-only observations; the frozen Phase-1 models were not changed, and adopting a variant would need a new frozen config and a fresh held-out test.
-- 90% split-conformal prediction intervals, empirical coverage on held-out engines: Ridge 89% (mean width 54 cycles), Gradient boosting 91% (mean width 54 cycles), LSTM 94% (mean width 67 cycles).
+- Model rankings across uniform / late-life / stage-stratified cut points: Kendall τ = 1.00 for every pair.
+- Ablations with a clear effect (Δ RMSE vs the full model, paired CI excludes 0): Ridge: `cycle_only` +13.5, `stats_last` +4.5, `stats_last_mean` +3.9; Gradient boosting: `cycle_only` +15.0, `stats_last` +5.0, `stats_last_mean` +5.1; LSTM (1 repeat): `sensors_only` +1.0, `cycle_only` +12.8, `window_20` +1.6, `window_40` -1.1. Validation-only: the frozen Phase-1 models were not changed.
+- 90% split-conformal intervals, empirical coverage on held-out engines: Ridge 89% (mean width 54 cycles), Gradient boosting 91% (mean width 54 cycles), LSTM 94% (mean width 67 cycles).
 <!-- PHASE2:END -->
 
-Details, figures and limitations: **[`reports/phase2_report.md`](reports/phase2_report.md)**. Methods and assumptions: [`docs/phase2.md`](docs/phase2.md).
+Pooled RMSE is computed over all held-out predictions; the fold mean averages the 15 per-fold RMSEs. The CIs are approximate because repeated folds share training engines. The one-cut-point-per-engine conformal method has a finite-sample coverage guarantee under exchangeability; with 20 calibration engines per fold its realised coverage varies widely between folds, and no interval is guaranteed for the official test set's truncation process. Every number above can be explored interactively in the [dashboard](https://eliot-2006.github.io/engine-rul/):
 
-## Problem
+[![Dashboard overview: headline metric cards and the official-test model comparison chart](reports/figures/readme/dashboard.png)](https://eliot-2006.github.io/engine-rul/)
 
-Each engine starts healthy, develops a fault, and runs to failure. Given the sensor history up to the current cycle, predict how many cycles remain. Errors are asymmetric: predicting **more** life than remains (a *late* prediction) is the dangerous direction, and the benchmark's NASA score penalizes it more heavily.
+## Quick start
 
-## Dataset
-
-| | FD001 |
-|---|---|
-| Source | NASA PCoE C-MAPSS, via a Hugging Face mirror pinned to revision `4d14a0bf…` (raw `.txt` files only) |
-| Training | 100 engines run to failure, 20,631 cycles, lifetimes 128–362 cycles |
-| Test | 100 engines truncated before failure, one true RUL label per engine |
-| Columns | unit, cycle, 3 operational settings, 21 sensors |
-| Used | 14 informative sensors and the current cycle. 7 constant or two-valued sensors and the 3 settings are dropped |
-
-The official NASA download could not be reached during development, so every file is checked against SHA-256 checksums pinned in [`configs/dataset_manifest.yaml`](configs/dataset_manifest.yaml), along with structural invariants (row counts, unit IDs, contiguous cycles, value ranges). `engine-rul data verify --zip CMAPSSData.zip` cross-checks NASA's original archive whenever it is available. Data.gov lists no explicit license and the mirror says `other`, so the data is downloaded at setup and never committed. Details: [`docs/dataset.md`](docs/dataset.md).
-
-Citation: A. Saxena, K. Goebel, D. Simon, N. Eklund, "Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation," *PHM08*, Denver, CO, 2008.
-
-## Pipeline
-
-```mermaid
-flowchart LR
-  A[Pinned raw data<br/>SHA-256 verified] --> B[Engine-level split<br/>80 train / 20 val]
-  B --> C[Preprocess<br/>fit on train engines only]
-  C --> D[30-cycle windows<br/>+ 57 window stats]
-  D --> E[Baselines · Ridge ·<br/>Gradient boosting · LSTM]
-  E --> F[Tune on validation only<br/>→ frozen configs]
-  F --> G[5 seeds per model]
-  G --> H{{One logged evaluation<br/>on the official test set}}
-  H --> I[summary.json →<br/>report + figures]
-```
-
-## Models
-
-| Model | Input | Notes |
-|---|---|---|
-| Constant mean | — | Mean training target; the floor any model must beat |
-| Life prior | current cycle only | `mean lifetime − cycle`, capped. Tests whether sensors add anything beyond elapsed time |
-| Ridge | 57 window features | last / mean / std / slope of each sensor over the window, plus cycle. α tuned on validation |
-| Gradient boosting | 57 window features | scikit-learn `HistGradientBoostingRegressor`, 24-config grid, internal row-level early stopping disabled (it would leak across engines) |
-| LSTM (PyTorch) | 30 × 15 sequence | 8-config grid. Adam, MSE on scaled target, gradient clipping, early stopping on validation engines with best-weight restore |
-
-Every model sees the same 30-cycle history at the same evaluation points, is trained on the same 80 engines with the same target, and gets the same post-processing (clip at 0).
-
-## Evaluation protocol
-
-- **Target:** `RUL = last cycle − cycle`, capped at 125 for training (piecewise-linear target).
-- **Model selection:** RMSE on 200 test-like validation points (10 seeded truncations of each of the 20 validation engines). The test set is never used for tuning, early stopping, or feature choices.
-- **Test:** one prediction per test engine at its last observed cycle, scored against the **official uncapped labels** (headline) and against labels capped at 125 (literature-style, in the report).
-- **Metrics:** with error $d = \hat{y} - y$,
-
-  $$\text{RMSE}=\sqrt{\tfrac1N\textstyle\sum d_i^2},\quad \text{MAE}=\tfrac1N\textstyle\sum |d_i|,\quad S=\textstyle\sum_i \begin{cases} e^{-d_i/13}-1 & d_i<0\\ e^{d_i/10}-1 & d_i\ge 0\end{cases}$$
-
-- **Uncertainty:** mean ± std over 5 seeds (deterministic models trained once), a 2000-resample engine bootstrap CI, and paired bootstrap CIs for model differences. A model is called better only when that CI excludes 0.
-- **Test-set lock:** `evaluate --split test` refuses to run without `--final`, accepts only frozen `stage=final` runs whose config hash matches `configs/final/`, and appends every evaluation to [`results/test_evaluations.jsonl`](results/test_evaluations.jsonl). This is a procedural safeguard against accidental use (the label file is still on disk), not a security boundary.
-- **Leakage tests:** scaler and sensor selection fitted on training engines only, windows that never cross engines, and training/tuning that fail if they touch test files ([`tests/test_leakage.py`](tests/test_leakage.py)).
-
-Published C-MAPSS numbers use different protocols and are not ranked against these results. See [`docs/external_results.md`](docs/external_results.md).
-
-## Reproduce
-
-Requires [uv](https://docs.astral.sh/uv/). Python 3.12 is installed automatically.
+Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is installed automatically) and, for the dashboard only, Node.js ≥ 20.19.
 
 ```bash
-make setup          # uv sync --frozen
-make data           # download + verify FD001 (≈6 MB)
-make reproduce      # EDA → tune → sensitivity → 5-seed final → test eval → benchmarks → report
-make test           # pytest (synthetic + real-data tests)
-uv run mlflow ui --backend-store-uri sqlite:///mlflow.db   # browse runs
+make setup                 # uv sync --frozen
+make data                  # download FD001 (≈6 MB) and verify SHA-256 checksums
+make test                  # unit, leakage, reproducibility, dashboard-export and end-to-end tests
+make repro-check           # retrain the frozen configs, compare with published validation RMSE
+make reports               # reports, README blocks and dashboard data from committed results
+make dashboard             # build the static dashboard into dashboard/dist
+cd dashboard && npm run dev   # browse it locally
 ```
 
-Committed results were produced on CPU (Apple M3 Pro). On that machine, CPU training is bit-for-bit deterministic: the frozen LSTM config retrained during the final stage gave exactly the validation RMSE recorded during tuning. Runs on `--device mps|cuda` work but may differ slightly. Step-by-step commands, configs, and reproducibility notes: [`docs/experiments.md`](docs/experiments.md) and [`docs/testing.md`](docs/testing.md).
+| Workflow | Command | Reads official test labels? |
+|---|---|---|
+| Phase 1 training + validation | `make reproduce-phase1` (~15 min CPU) | No |
+| Phase 2 validation experiments | `make phase2` (~1.5 h CPU) | No |
+| Reports, README, dashboard data | `make reports` | No (committed artifacts only) |
+| All of the above | `make reproduce` | No |
+| The original official test evaluation | `make official-test-eval CONFIRM=official-test` | **Yes**: appends a round to the evaluation log |
 
-## Repository layout
+Published artifacts are never overwritten unless `FORCE=--force` is given. Predict for new sensor files with `uv run engine-rul predict --run <run dir> --input <sensor file>`; models trained in Phase 2's conformal run add calibrated intervals (`--levels 0.8 0.9`). Committed results were produced on CPU (Apple M3 Pro), where training is bit-for-bit deterministic; CI re-runs the fast frozen configs on Linux and matches the published validation RMSE within 1e-3.
 
-```text
-src/engine_rul/   data · split · preprocess · features · models/ · train · evaluate · metrics · benchmark · tracking · plots · report · cli
-configs/          base + per-model configs, tuning grids, frozen final configs, dataset manifest
-splits/           committed engine-level split
-results/final/    machine-readable results (summary, tuning, sensitivity, benchmarks)
-reports/          generated report.md and figures
-docs/             decisions, dataset, experiments, testing, pipeline, progress, external results
-tests/            unit, leakage, reproducibility and end-to-end tests
-```
+## Documentation
+
+| Topic | Where |
+|---|---|
+| Official test results, stage breakdown, feature importance, benchmarks | [`reports/report.md`](reports/report.md) |
+| Phase 2 results, figures and limitations | [`reports/phase2_report.md`](reports/phase2_report.md) |
+| Phase 2 methods and assumptions | [`docs/phase2.md`](docs/phase2.md) |
+| Dataset, checksums and licensing | [`docs/dataset.md`](docs/dataset.md) |
+| Configs, experiment sequence, benchmark method | [`docs/experiments.md`](docs/experiments.md) |
+| Reproducibility, provenance and tests | [`docs/testing.md`](docs/testing.md) |
+| Module architecture and diagrams | [`docs/pipeline.md`](docs/pipeline.md) |
+| Design decisions and post-test changes | [`docs/decisions.md`](docs/decisions.md) |
+| Dashboard build and data export | [`dashboard/README.md`](dashboard/README.md) |
 
 ## Limitations
 
-- Simulated data, a single subset (FD001: one operating condition, one fault mode), and only 100 test engines, so confidence intervals are wide.
-- One fixed engine split. Final models are not retrained on all 100 training engines.
-- Models trained on a target capped at 125 can't predict long RULs exactly. 11 test engines have a true RUL above 125.
-- The mirror's files match pinned checksums, but byte-identity with NASA's original archive is unverified.
+- Simulated data and a single subset (FD001: one operating condition, one fault mode). Only 100 test engines, so test confidence intervals are wide.
+- Phase 1 uses one fixed engine split, and final models are not retrained on all 100 training engines.
+- Models trained on a target capped at 125 cannot predict long RULs exactly; 11 test engines have a true RUL above 125.
+- The data comes from a pinned mirror whose files match recorded checksums; byte-identity with NASA's original archive is unverified ([`docs/dataset.md`](docs/dataset.md)).
+- Phase 1 ran from an uncommitted working tree (commit `c457958` plus local changes) and no source snapshot was kept for it; its frozen configs are hash-checked and reproduced by `repro-check`. Phase 2 results reference committed source snapshots ([`docs/testing.md`](docs/testing.md)).
 
-**Next steps:** repeated engine-level cross-validation, FD002–FD004 with per-condition normalization, and calibrated prediction intervals.
+**Next steps:** FD002–FD004 with per-condition normalization, retraining final models on all training engines, and a fresh held-out evaluation for any variant adopted from the ablations.
 
-## Built with
-
-Python 3.12 · PyTorch · scikit-learn · pandas · NumPy · Matplotlib · MLflow · pytest · uv · ruff
-
-Code is MIT-licensed ([LICENSE](LICENSE)). The C-MAPSS data is not covered by this license.
+Data citation: A. Saxena, K. Goebel, D. Simon, N. Eklund, "Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation," *PHM08*, Denver, CO, 2008. Code is MIT-licensed ([LICENSE](LICENSE)); the C-MAPSS data is not covered by this license and is downloaded at setup, never committed.
