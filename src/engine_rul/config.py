@@ -17,6 +17,12 @@ from engine_rul.errors import ConfigError
 from engine_rul.utils import canonical_hash
 
 FAMILIES = ("constant", "life_prior", "ridge", "hgb", "lstm")
+EARLY_STOPPING = ("dense", "endpoints")
+ADDED_FIELD_DEFAULTS = {
+    ("data", "use_sensors"): True,
+    ("data", "use_cycle"): True,
+    ("train", "early_stopping"): "dense",
+}
 
 
 @dataclass(frozen=True)
@@ -30,6 +36,8 @@ class DataConfig:
     expected_features: tuple[str, ...] | None = None  # PREP-01 assertion
     pad_short: bool = False
     check_invariants: bool = True  # DATA-10 against the dataset manifest
+    use_sensors: bool = True  # Phase 2 ablations: drop sensor channels
+    use_cycle: bool = True  # Phase 2 ablations: drop the cycle_norm channel
 
 
 @dataclass(frozen=True)
@@ -46,6 +54,9 @@ class TrainConfig:
     patience: int = 10
     min_delta: float = 0.01
     grad_clip: float = 1.0
+    # LSTM early stopping on "dense" validation windows (Phase 1) or on the model-selection
+    # "endpoints" (Phase 2 alignment option).
+    early_stopping: str = "dense"
 
 
 @dataclass(frozen=True)
@@ -78,6 +89,11 @@ class Config:
         for k in ("seed", "device", "results_dir", "tracking"):
             d.pop(k)
         d["data"].pop("data_dir")
+        # Fields added after Phase 1 are hashed only when changed from their default, so every
+        # Phase 1 config (and its recorded config_hash) keeps the same hash.
+        for (section, key), default in ADDED_FIELD_DEFAULTS.items():
+            if d[section].get(key) == default:
+                d[section].pop(key)
         return canonical_hash(d)
 
     def replace(self, **changes) -> Config:
@@ -138,6 +154,10 @@ def _validate(cfg: Config) -> None:
     t = cfg.train
     if t.lr <= 0 or t.batch_size < 1 or t.max_epochs < 1 or t.patience < 1:
         raise ConfigError("train: lr > 0, batch_size >= 1, max_epochs >= 1, patience >= 1 required")
+    if t.early_stopping not in EARLY_STOPPING:
+        raise ConfigError(f"train.early_stopping must be one of {EARLY_STOPPING}")
+    if not (cfg.data.use_sensors or cfg.data.use_cycle):
+        raise ConfigError("at least one of data.use_sensors / data.use_cycle must be true")
     if not isinstance(cfg.seed, int):
         raise ConfigError("seed must be an int")
 

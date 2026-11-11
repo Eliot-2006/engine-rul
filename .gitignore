@@ -12,3 +12,8 @@ results/*
 !results/test_evaluations.jsonl
 !results/final_runs.json
 .DS_Store
+# Phase 2 experiment outputs are published (validation-only); bulky fold models and
+# per-run directories are not. Source snapshots stay local (results/snapshots).
+!results/phase2/
+results/phase2/**/models/
+results/phase2/repro/*/*/

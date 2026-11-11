@@ -19,7 +19,7 @@ during implementation. Anything that changes a frozen config after a test evalua
 | ADR-09 | Configs: YAML parsed into frozen `dataclasses` with explicit validation | No extra framework (Hydra or pydantic not needed). Typed and immutable. | Manual validation code, kept small. |
 | ADR-10 | CLI: stdlib `argparse` with subcommands under one console script `engine-rul` | Zero dependencies, sufficient for about 8 commands. | Less ergonomic than Typer or Click. Acceptable. |
 | ADR-11 | Dependency management: `uv` with `pyproject.toml` and committed `uv.lock`; Python 3.11 or 3.12 | Fast, reproducible lockfile, a single tool for venv and run. | Requires installing `uv`. The README gives a `pip install -e .` fallback without lock guarantees. |
-| ADR-12 | Test-set lock: test labels are only loadable through `evaluate --final`, and each use is logged | Makes honest test usage auditable. | Slightly more ceremony. |
+| ADR-12 | Test-set lock: test labels are only loadable through `evaluate --final`, and each use is logged | Makes honest test usage auditable. | Slightly more ceremony. The lock is a **procedural safeguard, not a security boundary**: the label file sits in `data/raw/` and anyone can read it directly or edit the code. What it guarantees is that the *pipeline* cannot touch test labels by accident, that each sanctioned use leaves an append-only log entry, and that overwriting the published `summary.json` needs an explicit `--force`. Honest use still depends on the author. |
 | ADR-13 | Predictions clipped below at 0 for all models; no upper clip | RUL can't be negative. The same post-processing for every model keeps the comparison fair. | None material. |
 | ADR-14 | Committed experiments train on **CPU** (`device: cpu` in `configs/base.yaml`); `--device auto`, `mps` and `cuda` remain supported | Measured on the development machine (Apple M3 Pro): LSTM epoch 1.28 s on CPU vs 1.70 s on MPS for the default config. CPU is also the deterministic reference device (REPRO-08). | GPU users can still opt in; their numbers may differ slightly (documented in README). |
 
@@ -40,6 +40,20 @@ during implementation. Anything that changes a frozen config after a test evalua
 | D-11 | Sensitivity study reviewed; defaults kept (R_max = 125, W = 30) | Lowest validation RMSE against the fixed capped-125 truth for both HGB and LSTM. Uncapped-truth validation RMSE favours uncapped training, but the uniform validation truncation points contain many early-life points (true RUL up to ~300) unlike the test labels (max 145), so it is not a sound basis for changing the cap. The first sensitivity run used a stale HGB config (it started before the HGB grid extension finished); it was re-run with the frozen configs before any final training. |
 | D-12 | `make bench` benchmarks LSTM inference on CPU and MPS | BENCH-06. Training stays on CPU (ADR-14). |
 
+## Phase 2 decisions (validation only; see [`phase2.md`](phase2.md))
+
+| ID | Decision | Why |
+|---|---|---|
+| P2-01 | Phase 2 never reads the official test files; all new experiments use the 100 training engines | Test set already spent (one evaluation). Phase-2 outputs live in `results/phase2/` and are reported in `reports/phase2_report.md`, separate from `reports/report.md`. |
+| P2-02 | Repeated (3 × 5-fold) lifetime-stratified, engine-grouped CV; nested inner split (80/20 of development engines) for preprocessing, hyperparameters and LSTM early stopping | Outer engines influence nothing but the score; lifetime stratification keeps folds comparable (lifetime is a strong driver of error). |
+| P2-03 | Endpoints sampled per (seed, strategy, engine), `min_cycle = 40` | Identical endpoints for every model/variant; 40 ≥ the largest ablation window so window-length variants are scored on the same points. |
+| P2-04 | Selection on uniform endpoints; late/stratified are reported, not selected on | Uniform matches the Phase-1 selection objective; the comparison shows how the choice would change rankings and selections, without picking a "winner" strategy using test data. |
+| P2-05 | LSTM early stopping on inner-validation *selection endpoints* (`train.early_stopping: endpoints`) in Phase 2 | Aligns the stopping criterion with the selection objective. Phase-1 runs keep `dense`; the new field is omitted from config hashes at its default, so all frozen hashes are unchanged. |
+| P2-06 | Statistical unit = engine (per-engine mean errors, engine cluster bootstrap) | Endpoints/windows from one engine are strongly dependent. CIs on pooled CV predictions are labelled approximate (training-set overlap ignored). |
+| P2-07 | Ablations reuse the CV run's per-fold selected hyperparameters and change one thing | One dimension at a time, no re-tuning per variant (which would mix selection noise into Δ). |
+| P2-08 | Split conformal with a disjoint calibration role (60/15/25 of development engines); one-endpoint-per-engine calibration as the default | The only variant with a finite-sample guarantee under engine exchangeability; pooled variants are reported as empirical. |
+| P2-09 | Published artifacts are write-protected (`--force` needed) and experiments go to `results/phase2/<category>/<name>/` with a manifest and source snapshot | Prevents silent overwrites of frozen configs, published results and the test log. Consequence: `make reproduce` now needs `FORCE=--force`. |
+
 ## Post-test changes
 
 The official test set was evaluated **once** (2026-11-11 03:38 UTC, 13 log entries = 1 constant +
@@ -54,6 +68,11 @@ Changes made after that evaluation affect presentation only and do not touch any
   working-tree changes at evaluation time.
 - `ruff format` applied to `src/` and `tests/` (whitespace/line-wrapping only; the full test suite
   passed before and after).
+- Phase 2 (`report.py`): the five gradient-boosting runs are labelled "5 (identical runs)" and the
+  table footnote says they are bit-identical and not independent evidence of stability (D-06).
+  Wording only; every number in `reports/report.md` is unchanged.
+- Phase 2: docstrings now state that a single-layer LSTM has no inter-layer (recurrent) dropout and
+  only the head dropout is active, which applies to the frozen LSTM (1 layer, dropout 0.3).
 
 The validation→test ranking flip between LSTM and gradient boosting was **not** acted on: the LSTM
 was not re-tuned and gradient boosting was not re-selected after seeing test results.

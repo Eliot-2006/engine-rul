@@ -1,0 +1,25 @@
+# Phase 2 ablations (validation only). Every variant reuses the hyperparameters that the source
+# CV run selected on inner validation for that (repeat, fold, family), the same inner roles and
+# the same outer endpoints, and changes exactly one thing. `engine-rul cv ablation`.
+name: fd001_ablation
+category: ablation
+source_cv: results/phase2/cv/fd001_nested_cv
+repeats: [0, 1, 2]                # tabular families
+lstm_repeats: [0]                 # LSTM variants are slower; one repeat (5 outer folds)
+variants:
+  # recomputed baseline; must reproduce the source CV predictions (determinism check)
+  - {name: base, families: [ridge, hgb, lstm]}
+  # input channels
+  - {name: sensors_only, families: [ridge, hgb, lstm], data: {use_cycle: false}}
+  - {name: cycle_only, families: [ridge, hgb, lstm], data: {use_sensors: false}}
+  # tabular window statistics (default: last, mean, std, slope)
+  - {name: stats_last, families: [ridge, hgb], params: {feature_stats: [last]}}
+  - {name: stats_last_mean, families: [ridge, hgb], params: {feature_stats: [last, mean]}}
+  - {name: stats_last_mean_slope, families: [ridge, hgb], params: {feature_stats: [last, mean, slope]}}
+  # LSTM sequence length (default 30) and depth
+  - {name: window_20, families: [lstm], data: {window: 20}}
+  - {name: window_40, families: [lstm], data: {window: 40}}
+  - {name: layers_1, families: [lstm], params: {num_layers: 1}}
+  - {name: layers_2, families: [lstm], params: {num_layers: 2}}
+  # early stopping on dense inner-val windows instead of the selection endpoints
+  - {name: early_stop_dense, families: [lstm], train: {early_stopping: dense}}

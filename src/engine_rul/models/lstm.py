@@ -1,7 +1,8 @@
 """Primary sequence model: stacked LSTM regressor (PRD 4.4 M3, ADR-08).
 
 Training: Adam + MSE on targets scaled by S = R_max (or 125 if uncapped), seeded shuffling,
-gradient clipping, per-epoch validation RMSE on the dense validation windows (capped truth),
+gradient clipping, per-epoch validation RMSE (capped truth) on the dense validation windows or,
+with ``train.early_stopping: endpoints`` (Phase 2), on the model-selection endpoints,
 early stopping with best-weight restore, ``best.pt`` checkpoint (ART-03), NaN guard (ERR-04).
 """
 
@@ -26,6 +27,12 @@ DEFAULTS = {"hidden_size": 64, "num_layers": 2, "dropout": 0.2}
 
 
 class LSTMRegressor(nn.Module):
+    """LSTM -> last hidden state -> MLP head.
+
+    ``dropout`` is applied in two places: between stacked LSTM layers (PyTorch's inter-layer
+    dropout, which only exists when ``num_layers > 1``) and inside the head. For a single-layer
+    LSTM there is no recurrent/inter-layer dropout at all; only the head dropout is active."""
+
     def __init__(
         self, n_features: int, hidden_size: int = 64, num_layers: int = 2, dropout: float = 0.2
     ):

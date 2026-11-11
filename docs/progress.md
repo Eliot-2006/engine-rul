@@ -1,6 +1,6 @@
 # Progress log
 
-Last updated: 2026-11-10 (local) / 2026-11-11 UTC. Status: **MVP complete**, with the follow-ups listed under *Remaining work*.
+Last updated: 2026-11-10 (local). Status: **MVP complete; Phase 2 (validation-only evaluation and reliability) complete**, with the follow-ups listed under *Remaining work*.
 
 ## Milestones
 
@@ -21,11 +21,24 @@ Last updated: 2026-11-10 (local) / 2026-11-11 UTC. Status: **MVP complete**, wit
 | M12 Report and figures | ✅ | `reports/report.md`, 11 result/training figures, all generated from `results/final/` |
 | M13 README and polish | ✅ | README with a generated results block; docs for dataset, experiments, testing, pipeline, decisions |
 
+## Phase 2 milestones (validation only — the official test set was not used again)
+
+| Milestone | Status | Evidence |
+|---|---|---|
+| P2-M1 Provenance and isolation | ✅ | `provenance.py`; manifests + source snapshots; `--force` needed to overwrite published artifacts |
+| P2-M2 Repeated nested CV | ✅ | `splits/cv_fd001.json` (3 × 5 folds); `results/phase2/cv/fd001_nested_cv/` (48 min CPU) |
+| P2-M3 Validation strategies | ✅ | uniform / late / stratified endpoints scored on the same models; rankings identical (τ = 1) |
+| P2-M4 Ablations | ✅ | `results/phase2/ablation/fd001_ablation/`; recomputed base = CV predictions exactly |
+| P2-M5 Prediction intervals | ✅ | `results/phase2/conformal/fd001_conformal/`; `engine-rul predict --levels` |
+| P2-M6 Benchmarks | ✅ | model-only vs end-to-end, CPU + MPS: `results/phase2/benchmark/fd001_latency/` |
+| P2-M7 Reproducibility check | ✅ | `engine-rul repro-check`: all 5 frozen configs reproduce validation RMSE exactly; CI smoke step |
+| P2-M8 Report and docs | ✅ | `reports/phase2_report.md`, `docs/phase2.md`, README Phase-2 block (generated) |
+
 ## Tests
 
 | Run | Result |
 |---|---|
-| `uv run pytest -q` (synthetic + real data) | **74 passed** (~24 s) |
+| `uv run pytest -q` (synthetic + real data) | **87 passed** (74 Phase 1 + 13 Phase 2) |
 | `uv run ruff check src tests` | clean |
 | `uv run ruff format --check src tests` | clean |
 | `uvx mypy src --ignore-missing-imports` (not part of the PRD toolchain) | 27 findings, almost all "fitted attribute may be `None`" patterns in model/preprocessor classes; one real edge case (`train.final([])` with no families crashes). None affect recorded results |
@@ -43,6 +56,11 @@ Bugs found by tests during development: the LSTM checkpoint stored `torch.__vers
 | EXP-05 | Final training, seeds 0–4 | LSTM seed 0 reproduced its tuning-run validation RMSE exactly |
 | EXP-06 | Official test evaluation (once) | see `reports/report.md` §3; gradient boosting had the lowest test RMSE, and the LSTM (best on validation) was worse on test with a paired CI excluding 0 |
 | EXP-07 | Benchmarks | latency, throughput, size; LSTM inference on CPU and MPS |
+| P2-EXP-01 | Nested 3 × 5-fold CV | gradient boosting lowest RMSE (13.95, capped truth), best in 13/15 folds; vs LSTM Δ −1.23 [−2.14, −0.36] |
+| P2-EXP-02 | Validation strategies | identical rankings; selected hyperparameters agree with uniform-endpoint selection in only 20–40 % of folds |
+| P2-EXP-03 | Ablations | window slopes matter (+4–5 RMSE without them), std adds nothing; cycle channel helps the LSTM only; LSTM window 40 < 30 (validation-only observation, not adopted) |
+| P2-EXP-04 | Split conformal | pooled/Mondrian coverage ≈ nominal; one-endpoint-per-engine (exact guarantee) correct on average but variable with 20 calibration engines |
+| P2-EXP-05 | Benchmarks | end-to-end latency dominated by preprocessing/windowing (~18 ms for 100 engines) except for HGB (~9 ms fixed predict overhead) |
 
 ## Important decisions
 
@@ -64,11 +82,14 @@ See [`decisions.md`](decisions.md): ADR-14 (CPU training), D-02 (`data verify` r
 - Code is **not committed** (per the owner's instruction that they make their own commits). Results record `git_dirty = true`; committing and re-running `make reproduce` would give clean provenance.
 - Published benchmark numbers in `docs/external_results.md` are unfilled: primary sources weren't accessible to verify (EVAL-41).
 - Byte-identity of mirror files with NASA's original ZIP remains unverified (needs the ZIP).
-- Optional PRD extensions not started: OPT-1 (repeated CV), OPT-2 (TCN), OPT-3 (FD002–FD004), OPT-4 (SHAP), OPT-5 (dashboard), OPT-6 (random forest), OPT-7 (prediction intervals), OPT-8 (Docker).
+- Phase 2 results record `git_dirty = true` with a local source snapshot (`results/snapshots/`, git-ignored); after committing, `make phase2 FORCE=--force` gives clean provenance.
+- Phase-1 figures use tab10 green/red for gradient boosting/LSTM, which fails a colour-vision-deficiency check (ΔE 3.9); Phase-2 figures use a validated palette. Recolouring Phase-1 figures was left alone to keep that report intact.
+- Optional PRD extensions not started: OPT-2 (TCN), OPT-3 (FD002–FD004), OPT-4 (SHAP), OPT-5 (dashboard), OPT-6 (random forest), OPT-8 (Docker). (OPT-1 repeated CV and OPT-7 prediction intervals were done in Phase 2.)
 - Optional cleanup: add `mypy` with explicit fitted-state asserts.
 
 ## Continuation instructions
 
 1. `make setup data` on a fresh clone; `uv run pytest -q` should report 74 passed.
 2. Results can be regenerated without retraining via `uv run engine-rul report`, which reads `results/final/`.
-3. A full re-run is `make reproduce` (~15 min CPU). Note that it **appends** a new test-evaluation round to `results/test_evaluations.jsonl`, which is intended and should be explained in `docs/decisions.md`.
+3. A full re-run is `make reproduce FORCE=--force` (~15 min CPU). It **overwrites** published Phase-1 artifacts and **appends** a new test-evaluation round to `results/test_evaluations.jsonl`, which should be explained in `docs/decisions.md`. To check reproducibility without touching anything, use `make repro-check`.
+4. Phase 2: `make phase2` (~1.5 h CPU) re-runs CV, ablations, conformal and benchmarks into `results/phase2/` (refuses to overwrite; add `FORCE=--force`), then `make report-phase2`.

@@ -1,0 +1,27 @@
+{
+ "created_at_utc": "2026-11-11T05:01:42+00:00",
+ "category": "benchmark",
+ "name": "fd001_latency",
+ "families": [
+  "constant",
+  "life_prior",
+  "ridge",
+  "hgb",
+  "lstm"
+ ],
+ "devices": [
+  "cpu",
+  "mps"
+ ],
+ "source_runs": "results/final/summary.json",
+ "provenance": {
+  "git_commit": "b618515d7c19cc17d678d6f5dacd27659ccd0211",
+  "git_dirty": true,
+  "source_snapshot": {
+   "sha256": "82a4446222b120597992a09de179780549e270d57dd9f5e0fe2d0074c5a5920a",
+   "path": "results/snapshots/82a4446222b12059.tar.gz",
+   "n_untracked": 10
+  }
+ },
+ "official_test_set_used": false
+}

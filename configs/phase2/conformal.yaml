@@ -1,0 +1,22 @@
+# Phase 2 split-conformal prediction intervals (validation only). `engine-rul cv run --spec
+# configs/phase2/conformal.yaml`. Same folds, endpoints and nested selection as configs/phase2/cv.yaml,
+# but each outer fold's development engines are split three ways; the calibration engines are
+# never used for fitting, preprocessing, hyperparameter selection or early stopping.
+name: fd001_conformal
+category: conformal
+fold_file: splits/cv_fd001.json
+repeats: [0]
+inner_fractions: {train: 0.6, val: 0.15, cal: 0.25}   # 48 / 12 / 20 engines
+early_stopping: endpoints
+save_models: true          # fold models + conformal.json, usable by `engine-rul predict`
+endpoints:
+  n_per_engine: 10
+  min_cycle: 40
+  late_horizon: 125
+  seed: 20261111
+  strategies: [uniform, late, stratified]
+  primary: uniform         # calibration and selection endpoints
+families:
+  ridge: {config: configs/final/ridge.yaml, grid: configs/grids/ridge.yaml}
+  hgb: {config: configs/final/hgb.yaml, grid: configs/grids/hgb.yaml}
+  lstm: {config: configs/final/lstm.yaml, grid: configs/grids/lstm.yaml}

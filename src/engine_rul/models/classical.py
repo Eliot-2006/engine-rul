@@ -13,7 +13,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from engine_rul.features import WindowSet, tabular_features
+from engine_rul.features import TAB_STATS, WindowSet, tabular_features
 
 
 class _SklearnModel:
@@ -21,6 +21,8 @@ class _SklearnModel:
 
     def __init__(self, params=None, seed: int = 0):
         self.params = dict(params or {})
+        # Phase 2 ablation knob; not an estimator argument.
+        self.stats = tuple(self.params.get("feature_stats", TAB_STATS))
         self.seed = seed
         self.model = None
         self.feature_names: list[str] | None = None
@@ -28,13 +30,16 @@ class _SklearnModel:
     def _make(self):
         raise NotImplementedError
 
+    def _estimator_params(self) -> dict:
+        return {k: v for k, v in self.params.items() if k != "feature_stats"}
+
     def fit(self, train: WindowSet, val=None, cfg=None, workdir=None, tracker=None) -> dict:
-        X, self.feature_names = tabular_features(train)
+        X, self.feature_names = tabular_features(train, self.stats)
         self.model = self._make().fit(X, train.y)
         return {}
 
     def features(self, ws: WindowSet) -> np.ndarray:
-        X, names = tabular_features(ws)
+        X, names = tabular_features(ws, self.stats)
         assert names == self.feature_names
         return X
 
@@ -84,7 +89,10 @@ class HGBModel(_SklearnModel):
     def _make(self):
         # LEAK-10: internal early stopping would split *rows* (same engine on both sides).
         return HistGradientBoostingRegressor(
-            loss="squared_error", early_stopping=False, random_state=self.seed, **self.params
+            loss="squared_error",
+            early_stopping=False,
+            random_state=self.seed,
+            **self._estimator_params(),
         )
 
     def n_params(self) -> int:

@@ -13,12 +13,12 @@ Predicting the **remaining useful life (RUL)** of turbofan engines from multivar
 | **Constant mean** | 41.88 | [37.9, 45.7] | 36.15 | 18,982 | 1 |
 | **Life prior (cycle only)** | 36.76 | [30.7, 43.0] | 28.02 | 23,109 | 1 |
 | **Ridge** | 16.74 | [14.3, 19.1] | 13.49 | 459 | 1 |
-| **Gradient boosting** | 13.26 | [11.1, 15.3] | 9.86 | 244 | 5 |
+| **Gradient boosting** | 13.26 | [11.1, 15.3] | 9.86 | 244 | 5 (identical runs) |
 | **LSTM** | 15.90 ± 0.42 | [13.3, 18.4] | 11.89 ± 0.46 | 397 ± 23 | 5 |
 
 <sub>Official FD001 test set, 100 engines, uncapped labels; mean ± std over seeds; CI = engine bootstrap of the median seed. Source: `results/final/summary.json` (generated 2026-11-11).</sub>
 
-- Lowest mean test RMSE: **Gradient boosting** (13.26 cycles over 5 seed(s); NASA score 244).
+- Lowest mean test RMSE: **Gradient boosting** (13.26 cycles; seeds: 5 (identical runs); NASA score 244).
 - On validation (the selection data), **LSTM** had the lowest RMSE (13.75 vs 14.00 for Gradient boosting); the ranking flipped on the test set, a reminder of how noisy 20 validation engines are.
 - LSTM has higher test RMSE than Gradient boosting (median seeds, Δ = +2.74, paired 95% CI [0.38, 5.21]).
 - Ridge has lower test RMSE than Life prior (cycle only) (median seeds, Δ = -20.02, paired 95% CI [-25.79, -14.23]).
@@ -31,6 +31,33 @@ Predicting the **remaining useful life (RUL)** of turbofan engines from multivar
 ![Predicted vs true RUL on the official test set](reports/figures/results/pred_vs_true_test.png)
 
 Full tables (capped-truth variant, degradation-stage breakdown, worst engines, feature importance, benchmarks, sensitivity study, test-set usage log) are in **[`reports/report.md`](reports/report.md)**.
+
+## Validation-only findings (Phase 2)
+
+> [!NOTE]
+> Everything in this section comes from cross-validation on the **training** engines. The official test set was not used again, and none of these results changed the Phase-1 models above. CV numbers use capped truth and many truncation points per engine, so they are **not comparable** to the test table.
+
+<!-- PHASE2:START -->
+| Model | CV RMSE (fold mean ± sd) | Pooled 95% CI (approx.) | Best in % of folds |
+|---|---|---|---|
+| **Constant mean** | 41.61 ± 1.60 | [41.15, 42.15] | 0% |
+| **Life prior (cycle only)** | 32.67 ± 1.95 | [28.96, 36.53] | 0% |
+| **Ridge** | 16.95 ± 0.96 | [16.05, 18.01] | 0% |
+| **Gradient boosting** | 13.92 ± 0.97 | [12.88, 15.15] | 87% |
+| **LSTM** | 15.13 ± 1.41 | [14.13, 16.27] | 13% |
+
+<sub>3 × 5-fold nested, engine-grouped CV on the 100 training engines; uniform truncation endpoints; truth capped at 125. Source: `results/phase2/cv/`.</sub>
+
+- Gradient boosting − LSTM: Δ RMSE = -1.23, paired engine-bootstrap 95% CI [-2.14, -0.36]; the CI excludes 0.
+- Model rankings across uniform / late-life / stage-stratified validation endpoints: Kendall τ = 1.00 for every pair.
+- Ablation, Ridge: clearly worse than the full model: `cycle_only` (+13.5), `stats_last` (+4.5), `stats_last_mean` (+3.9); clearly better: none (Δ RMSE, paired CI excludes 0).
+- Ablation, Gradient boosting: clearly worse than the full model: `cycle_only` (+15.0), `stats_last` (+5.0), `stats_last_mean` (+5.1); clearly better: none (Δ RMSE, paired CI excludes 0).
+- Ablation, LSTM: clearly worse than the full model: `sensors_only` (+1.0), `cycle_only` (+12.8), `window_20` (+1.6); clearly better: `window_40` (-1.1) (Δ RMSE, paired CI excludes 0).
+- Ablation improvements are validation-only observations; the frozen Phase-1 models were not changed, and adopting a variant would need a new frozen config and a fresh held-out test.
+- 90% split-conformal prediction intervals, empirical coverage on held-out engines: Ridge 89% (mean width 54 cycles), Gradient boosting 91% (mean width 54 cycles), LSTM 94% (mean width 67 cycles).
+<!-- PHASE2:END -->
+
+Details, figures and limitations: **[`reports/phase2_report.md`](reports/phase2_report.md)**. Methods and assumptions: [`docs/phase2.md`](docs/phase2.md).
 
 ## Problem
 
@@ -86,7 +113,7 @@ Every model sees the same 30-cycle history at the same evaluation points, is tra
   $$\text{RMSE}=\sqrt{\tfrac1N\textstyle\sum d_i^2},\quad \text{MAE}=\tfrac1N\textstyle\sum |d_i|,\quad S=\textstyle\sum_i \begin{cases} e^{-d_i/13}-1 & d_i<0\\ e^{d_i/10}-1 & d_i\ge 0\end{cases}$$
 
 - **Uncertainty:** mean ± std over 5 seeds (deterministic models trained once), a 2000-resample engine bootstrap CI, and paired bootstrap CIs for model differences. A model is called better only when that CI excludes 0.
-- **Test-set lock:** `evaluate --split test` refuses to run without `--final`, accepts only frozen `stage=final` runs whose config hash matches `configs/final/`, and appends every evaluation to [`results/test_evaluations.jsonl`](results/test_evaluations.jsonl).
+- **Test-set lock:** `evaluate --split test` refuses to run without `--final`, accepts only frozen `stage=final` runs whose config hash matches `configs/final/`, and appends every evaluation to [`results/test_evaluations.jsonl`](results/test_evaluations.jsonl). This is a procedural safeguard against accidental use (the label file is still on disk), not a security boundary.
 - **Leakage tests:** scaler and sensor selection fitted on training engines only, windows that never cross engines, and training/tuning that fail if they touch test files ([`tests/test_leakage.py`](tests/test_leakage.py)).
 
 Published C-MAPSS numbers use different protocols and are not ranked against these results. See [`docs/external_results.md`](docs/external_results.md).

@@ -89,6 +89,18 @@ def make_windows(
     )
 
 
+def build_windows(
+    df: pd.DataFrame, feature_cols: list[str], data_cfg, end_points=None
+) -> WindowSet:
+    """make_windows + input-channel selection driven by a DataConfig (window, pad_short,
+    use_sensors, use_cycle). Every harness (training, CV, evaluation, benchmarks) goes through
+    this so that train-time and inference-time inputs always match."""
+    ws = make_windows(
+        df, feature_cols, data_cfg.window, end_points=end_points, pad_short=data_cfg.pad_short
+    )
+    return select_channels(ws, data_cfg.use_sensors, data_cfg.use_cycle)
+
+
 def last_cycle_points(df: pd.DataFrame) -> np.ndarray:
     """One (unit, last observed cycle) pair per engine - the official test protocol (EVAL-02)."""
     last = df.groupby("unit")["cycle"].max()
@@ -96,24 +108,57 @@ def last_cycle_points(df: pd.DataFrame) -> np.ndarray:
 
 
 TAB_STATS = ("last", "mean", "std", "slope")
+CYCLE = "cycle_norm"
 
 
-def tabular_features(ws: WindowSet) -> tuple[np.ndarray, list[str]]:
-    """FEAT-20: last/mean/std/slope per sensor channel + cycle_norm at the end cycle.
+def select_channels(ws: WindowSet, use_sensors: bool = True, use_cycle: bool = True) -> WindowSet:
+    """Phase 2 input ablations: keep sensor channels and/or the cycle_norm channel."""
+    if use_sensors and use_cycle:
+        return ws
+    keep = [
+        i
+        for i, n in enumerate(ws.feature_names)
+        if (n == CYCLE and use_cycle) or (n != CYCLE and use_sensors)
+    ]
+    return WindowSet(
+        ws.X_seq[:, :, keep],
+        ws.y,
+        ws.y_true,
+        ws.unit,
+        ws.cycle,
+        [ws.feature_names[i] for i in keep],
+    )
 
-    Assumes the final channel is ``cycle_norm`` (Preprocessor.feature_names)."""
-    assert ws.feature_names[-1] == "cycle_norm"
-    S = ws.X_seq[:, :, :-1].astype(np.float64)
+
+def tabular_features(ws: WindowSet, stats=TAB_STATS) -> tuple[np.ndarray, list[str]]:
+    """FEAT-20: per sensor channel the requested window statistics (default last, mean, std,
+    slope, in that per-sensor order), plus cycle_norm at the end cycle if that channel exists."""
+    unknown = set(stats) - set(TAB_STATS)
+    if unknown:
+        raise ValueError(
+            f"unknown tabular stats {sorted(unknown)}; expected a subset of {TAB_STATS}"
+        )
+    has_cycle = bool(ws.feature_names) and ws.feature_names[-1] == CYCLE
+    sensors = ws.feature_names[:-1] if has_cycle else ws.feature_names
+    S = ws.X_seq[:, :, : len(sensors)].astype(np.float64)
     W = S.shape[1]
     t = np.arange(W, dtype=np.float64) - (W - 1) / 2
     denom = (t**2).sum()
-    slope = (
-        np.einsum("nwf,w->nf", S - S.mean(axis=1, keepdims=True), t) / denom
-        if denom
-        else np.zeros(S.shape[::2])
-    )
-    blocks = [S[:, -1, :], S.mean(axis=1), S.std(axis=1), slope]
-    feats = np.stack(blocks, axis=2).reshape(len(S), -1)  # per sensor: last, mean, std, slope
-    X = np.column_stack([feats, ws.X_seq[:, -1, -1].astype(np.float64)])
-    names = [f"{s}__{st}" for s in ws.feature_names[:-1] for st in TAB_STATS] + ["cycle_norm"]
-    return X, names
+
+    def slope():
+        if not denom:
+            return np.zeros((len(S), S.shape[2]))
+        return np.einsum("nwf,w->nf", S - S.mean(axis=1, keepdims=True), t) / denom
+
+    make = {
+        "last": lambda: S[:, -1, :],
+        "mean": lambda: S.mean(axis=1),
+        "std": lambda: S.std(axis=1),
+        "slope": slope,
+    }
+    cols = [np.stack([make[st]() for st in stats], axis=2).reshape(len(S), -1)] if sensors else []
+    names = [f"{s}__{st}" for s in sensors for st in stats]
+    if has_cycle:
+        cols.append(ws.X_seq[:, -1, -1].astype(np.float64)[:, None])
+        names.append(CYCLE)
+    return np.column_stack(cols), names

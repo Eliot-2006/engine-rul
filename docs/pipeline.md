@@ -34,6 +34,11 @@ flowchart TD
 | `tracking.py` | MLflow + `run.json` (JSON is the source of truth) | fail a run because MLflow failed |
 | `benchmark.py` | latency, throughput, size | read test labels |
 | `plots.py`, `eda.py`, `report.py` | figures and reports from saved results | recompute metrics |
+| `cv.py` (Phase 2) | CV folds, nested roles, endpoint strategies, per-fold preparation, CV/ablation runners and engine-level analysis | read test files |
+| `conformal.py` (Phase 2) | split-conformal calibration, intervals, coverage analysis | touch fitting/selection data |
+| `inference.py` | `Predictor` / `predict_engines`: raw sensor rows → predictions (+ intervals if calibrated) | change point predictions |
+| `provenance.py` | git/dirty/source snapshot, experiment directories, overwrite protection | — |
+| `report_phase2.py` | `reports/phase2_report.md` from `results/phase2/` | recompute model predictions (except the interval figure) |
 
 ## LSTM architecture
 

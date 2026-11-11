@@ -24,12 +24,14 @@ Unit tests use a synthetic, C-MAPSS-shaped dataset built in `tests/conftest.py` 
 | `test_fair_comparison.py` | identical evaluation points and clipping across families (TEST-FAIR-01) |
 | `test_reproducibility.py` | same seed → same predictions (Ridge/HGB 1e-6, LSTM 1e-3 on CPU), config hashing, config validation (TEST-REPRO-*) |
 | `test_e2e_smoke.py` | tune → final → locked test eval → benchmark → report on synthetic data; `summary.json` schema; `final` refuses unfrozen configs; test eval rejects non-final runs (TEST-E2E-01) |
+| `test_phase2.py` | CV folds partition engines and are deterministic; overlapping fold files rejected; inner roles disjoint; endpoints deterministic, valid and independent of fold membership; per-fold preprocessor fit on inner-train only; identical endpoints for every model; CV determinism (two runs → identical predictions); calibration engines disjoint from fit/selection/outer; conformal finite-sample coverage on exchangeable synthetic scores; Mondrian bins; intervals don't change point predictions; experiment-directory isolation; published test summary write-protected; frozen config hashes unchanged |
 
 ## Reproducibility notes
 
 - **Environment:** `uv.lock` pins every package. `uv sync --frozen` recreates the environment; Python 3.12 comes from `.python-version`.
 - **Seeds:** `set_seed` seeds Python, NumPy and torch. The split and evaluation points use `numpy.random.default_rng(20261110)`; DataLoader shuffling uses a seeded `torch.Generator`.
 - **Determinism:** CPU training uses `torch.use_deterministic_algorithms(True)`. Evidence: the frozen LSTM config retrained in the final stage produced exactly the validation RMSE recorded during tuning (13.583), and recomputing validation metrics from saved artifacts (`engine-rul evaluate --split val --run results/<run_id>`) matched `run.json` to six decimals for the LSTM and HGB runs checked.
+- **Phase 2:** `engine-rul repro-check` retrains frozen configs in isolation and compares with the published validation RMSE (exact on this machine; CI runs it with tolerance 1e-3). The ablation run recomputes the CV base predictions and records the max difference (see `reports/phase2_report.md`).
 - **Devices:** MPS/CUDA results are expected to differ slightly from CPU. The committed results are CPU-only.
 - **Data versioning:** each run records the SHA-256 of the training file, the split file and the fitted preprocessor; each test evaluation records the test and label file hashes.
 - **Test-set honesty:** `results/test_evaluations.jsonl` is append-only and committed; `docs/decisions.md` lists any post-test changes.
