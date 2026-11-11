@@ -1,0 +1,51 @@
+# Selected by `engine-rul tune` on validation only (24 configs).
+# Selection metric: val RMSE on truncated eval points vs capped truth = 13.9966
+# Selected run: hgb-5519d90b-s0-20261111T032703025625Z
+model:
+  family: hgb
+  params:
+    learning_rate: 0.1
+    max_leaf_nodes: 7
+    min_samples_leaf: 20
+    max_iter: 500
+    l2_regularization: 0.0
+data:
+  subset: FD001
+  data_dir: data/raw
+  split_file: splits/fd001_split.json
+  window: 30
+  r_max: 125
+  drop_columns:
+  - op1
+  - op2
+  - op3
+  expected_features:
+  - s2
+  - s3
+  - s4
+  - s7
+  - s8
+  - s9
+  - s11
+  - s12
+  - s13
+  - s14
+  - s15
+  - s17
+  - s20
+  - s21
+  pad_short: false
+  check_invariants: true
+train:
+  lr: 0.001
+  batch_size: 256
+  max_epochs: 100
+  patience: 10
+  min_delta: 0.01
+  grad_clip: 1.0
+tracking:
+  mlflow_uri: sqlite:///mlflow.db
+  experiment: fd001-dev
+seed: 0
+device: cpu
+results_dir: results

@@ -1,0 +1,4 @@
+extends: base.yaml
+model:
+  family: ridge
+  params: {alpha: 1.0}

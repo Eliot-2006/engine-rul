@@ -1,0 +1,8 @@
+# Smaller/slower-learning first (PRD 4.4 M2). The PRD grid had max_leaf_nodes {15, 31}; the
+# first tuning run selected the boundary value 15, so 7 was added (validation-only; see
+# docs/decisions.md D-03). 24 configs.
+max_iter: [200, 500]
+max_leaf_nodes: [7, 15, 31]
+learning_rate: [0.03, 0.1]
+min_samples_leaf: [100, 20]
+l2_regularization: [0.0]

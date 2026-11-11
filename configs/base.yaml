@@ -1,0 +1,24 @@
+# Shared defaults (PRD 4.2, 6.1). Model configs `extends` this file.
+data:
+  subset: FD001
+  data_dir: data/raw
+  split_file: splits/fd001_split.json
+  window: 30            # ADR-04
+  r_max: 125            # ADR-03; null = uncapped
+  drop_columns: [op1, op2, op3]
+  expected_features: [s2, s3, s4, s7, s8, s9, s11, s12, s13, s14, s15, s17, s20, s21]  # PREP-01
+  pad_short: false
+  check_invariants: true
+train:
+  lr: 0.001
+  batch_size: 256
+  max_epochs: 100
+  patience: 10
+  min_delta: 0.01
+  grad_clip: 1.0
+tracking:
+  mlflow_uri: sqlite:///mlflow.db
+  experiment: fd001-dev
+seed: 0
+device: cpu           # measured faster than MPS for this model; see docs/decisions.md ADR-14
+results_dir: results

@@ -1,0 +1,578 @@
+{
+ "family": "hgb",
+ "grid": {
+  "max_iter": [
+   200,
+   500
+  ],
+  "max_leaf_nodes": [
+   7,
+   15,
+   31
+  ],
+  "learning_rate": [
+   0.03,
+   0.1
+  ],
+  "min_samples_leaf": [
+   100,
+   20
+  ],
+  "l2_regularization": [
+   0.0
+  ]
+ },
+ "n_configs": 24,
+ "selected": {
+  "params": {
+   "learning_rate": 0.1,
+   "max_leaf_nodes": 7,
+   "min_samples_leaf": 20,
+   "max_iter": 500,
+   "l2_regularization": 0.0
+  },
+  "run_id": "hgb-5519d90b-s0-20261111T032703025625Z",
+  "score": 13.996559849506223,
+  "val_points_capped": {
+   "rmse": 13.996559849506223,
+   "mae": 10.329649487428483,
+   "nasa_sum": 801.6031944765472,
+   "nasa_mean": 4.0080159723827355,
+   "bias": 2.99701634887733,
+   "late_fraction": 0.49,
+   "n": 200
+  },
+  "train_time_s": 3.124146208021557,
+  "n_params": 6500
+ },
+ "rows": [
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-9cd6b5f2-s0-20261111T032117144869Z",
+   "score": 14.428498805332769,
+   "val_points_capped": {
+    "rmse": 14.428498805332769,
+    "mae": 10.720860077264046,
+    "nasa_sum": 825.8192643082923,
+    "nasa_mean": 4.129096321541462,
+    "bias": 2.6462673624402275,
+    "late_fraction": 0.455,
+    "n": 200
+   },
+   "train_time_s": 0.9049161250004545,
+   "n_params": 2600
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-2f3a0bdb-s0-20261111T032126589401Z",
+   "score": 14.478268022544428,
+   "val_points_capped": {
+    "rmse": 14.478268022544428,
+    "mae": 10.724957517400231,
+    "nasa_sum": 832.3669743445652,
+    "nasa_mean": 4.161834871722826,
+    "bias": 2.710048229866436,
+    "late_fraction": 0.465,
+    "n": 200
+   },
+   "train_time_s": 0.7089242080110125,
+   "n_params": 2600
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-72d4be21-s0-20261111T032135462264Z",
+   "score": 14.087322542865317,
+   "val_points_capped": {
+    "rmse": 14.087322542865317,
+    "mae": 10.459988398945281,
+    "nasa_sum": 779.7277710143621,
+    "nasa_mean": 3.8986388550718107,
+    "bias": 2.869283547613878,
+    "late_fraction": 0.51,
+    "n": 200
+   },
+   "train_time_s": 0.8527460419863928,
+   "n_params": 2600
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-e124a646-s0-20261111T032145321254Z",
+   "score": 14.130691872668367,
+   "val_points_capped": {
+    "rmse": 14.130691872668367,
+    "mae": 10.427547290353647,
+    "nasa_sum": 802.7198645648538,
+    "nasa_mean": 4.013599322824269,
+    "bias": 2.822553575909667,
+    "late_fraction": 0.485,
+    "n": 200
+   },
+   "train_time_s": 0.7784317499899771,
+   "n_params": 2600
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-75a66335-s0-20261111T032153953321Z",
+   "score": 14.589616335796457,
+   "val_points_capped": {
+    "rmse": 14.589616335796457,
+    "mae": 10.748642628943974,
+    "nasa_sum": 841.9935573284056,
+    "nasa_mean": 4.209967786642028,
+    "bias": 2.9962146368277924,
+    "late_fraction": 0.495,
+    "n": 200
+   },
+   "train_time_s": 2.47336199998972,
+   "n_params": 5800
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-3a5dc3ac-s0-20261111T032213495338Z",
+   "score": 14.709965847121259,
+   "val_points_capped": {
+    "rmse": 14.709965847121259,
+    "mae": 10.746128475024516,
+    "nasa_sum": 875.3084326501922,
+    "nasa_mean": 4.376542163250961,
+    "bias": 3.2050095888409023,
+    "late_fraction": 0.485,
+    "n": 200
+   },
+   "train_time_s": 3.03453524998622,
+   "n_params": 5800
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-b778896c-s0-20261111T032233909773Z",
+   "score": 14.064103243175603,
+   "val_points_capped": {
+    "rmse": 14.064103243175603,
+    "mae": 10.438695873011419,
+    "nasa_sum": 758.2496487634053,
+    "nasa_mean": 3.7912482438170265,
+    "bias": 3.170854672018095,
+    "late_fraction": 0.52,
+    "n": 200
+   },
+   "train_time_s": 2.765710708015831,
+   "n_params": 5800
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-ae77eb63-s0-20261111T032253997172Z",
+   "score": 14.155028209017145,
+   "val_points_capped": {
+    "rmse": 14.155028209017145,
+    "mae": 10.28761002602932,
+    "nasa_sum": 807.3255772110971,
+    "nasa_mean": 4.036627886055485,
+    "bias": 3.4857339651448287,
+    "late_fraction": 0.52,
+    "n": 200
+   },
+   "train_time_s": 2.9588599169801455,
+   "n_params": 5800
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-ce7c043b-s0-20261111T032314607928Z",
+   "score": 14.833052256190665,
+   "val_points_capped": {
+    "rmse": 14.833052256190665,
+    "mae": 10.934369854458161,
+    "nasa_sum": 866.1910735524177,
+    "nasa_mean": 4.330955367762089,
+    "bias": 3.163749279722108,
+    "late_fraction": 0.51,
+    "n": 200
+   },
+   "train_time_s": 5.833305749983992,
+   "n_params": 12200
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-48c1d461-s0-20261111T032337938933Z",
+   "score": 14.686220869695008,
+   "val_points_capped": {
+    "rmse": 14.686220869695008,
+    "mae": 10.698818345044197,
+    "nasa_sum": 857.9149655997396,
+    "nasa_mean": 4.289574827998698,
+    "bias": 3.2485143597147528,
+    "late_fraction": 0.485,
+    "n": 200
+   },
+   "train_time_s": 6.660779124998953,
+   "n_params": 12200
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 100,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-f4e86cac-s0-20261111T032401466218Z",
+   "score": 14.999169670149383,
+   "val_points_capped": {
+    "rmse": 14.999169670149383,
+    "mae": 11.070411252830555,
+    "nasa_sum": 888.1386400137976,
+    "nasa_mean": 4.4406932000689885,
+    "bias": 3.1576518673005567,
+    "late_fraction": 0.545,
+    "n": 200
+   },
+   "train_time_s": 5.068851874995744,
+   "n_params": 12200
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "max_iter": 200,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-8ad59437-s0-20261111T032421801830Z",
+   "score": 14.99447013459648,
+   "val_points_capped": {
+    "rmse": 14.99447013459648,
+    "mae": 10.898041655248871,
+    "nasa_sum": 926.0022106195795,
+    "nasa_mean": 4.630011053097897,
+    "bias": 3.585093097506243,
+    "late_fraction": 0.535,
+    "n": 200
+   },
+   "train_time_s": 5.915738167008385,
+   "n_params": 12200
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-53ab96fd-s0-20261111T032444766230Z",
+   "score": 14.103996502993056,
+   "val_points_capped": {
+    "rmse": 14.103996502993056,
+    "mae": 10.322916869687855,
+    "nasa_sum": 771.8931459732587,
+    "nasa_mean": 3.8594657298662933,
+    "bias": 2.7219434082206293,
+    "late_fraction": 0.48,
+    "n": 200
+   },
+   "train_time_s": 3.1735121669771615,
+   "n_params": 6500
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-95766302-s0-20261111T032531261728Z",
+   "score": 14.198895782305414,
+   "val_points_capped": {
+    "rmse": 14.198895782305414,
+    "mae": 10.410641062258064,
+    "nasa_sum": 780.0372559171398,
+    "nasa_mean": 3.9001862795856987,
+    "bias": 2.645145596445336,
+    "late_fraction": 0.48,
+    "n": 200
+   },
+   "train_time_s": 3.2627823750081006,
+   "n_params": 6500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-6b094600-s0-20261111T032617301785Z",
+   "score": 14.157044311352978,
+   "val_points_capped": {
+    "rmse": 14.157044311352978,
+    "mae": 10.45220632597486,
+    "nasa_sum": 801.3108444070034,
+    "nasa_mean": 4.006554222035017,
+    "bias": 3.3201184619875597,
+    "late_fraction": 0.545,
+    "n": 200
+   },
+   "train_time_s": 3.59377875001519,
+   "n_params": 6500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-5519d90b-s0-20261111T032703025625Z",
+   "score": 13.996559849506223,
+   "val_points_capped": {
+    "rmse": 13.996559849506223,
+    "mae": 10.329649487428483,
+    "nasa_sum": 801.6031944765472,
+    "nasa_mean": 4.0080159723827355,
+    "bias": 2.99701634887733,
+    "late_fraction": 0.49,
+    "n": 200
+   },
+   "train_time_s": 3.124146208021557,
+   "n_params": 6500
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-2139ee75-s0-20261111T032749368813Z",
+   "score": 14.49368268775809,
+   "val_points_capped": {
+    "rmse": 14.49368268775809,
+    "mae": 10.723934751984888,
+    "nasa_sum": 822.5188363321257,
+    "nasa_mean": 4.112594181660628,
+    "bias": 3.1044119909697803,
+    "late_fraction": 0.53,
+    "n": 200
+   },
+   "train_time_s": 6.881872665981064,
+   "n_params": 14500
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-8956d893-s0-20261111T032835617978Z",
+   "score": 14.509120565667976,
+   "val_points_capped": {
+    "rmse": 14.509120565667976,
+    "mae": 10.585414385480997,
+    "nasa_sum": 862.89701662796,
+    "nasa_mean": 4.3144850831398,
+    "bias": 3.381020553720047,
+    "late_fraction": 0.525,
+    "n": 200
+   },
+   "train_time_s": 3.759059125004569,
+   "n_params": 14500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-68ee7b44-s0-20261111T032859775846Z",
+   "score": 14.160841449838218,
+   "val_points_capped": {
+    "rmse": 14.160841449838218,
+    "mae": 10.65829577121645,
+    "nasa_sum": 783.2810518448819,
+    "nasa_mean": 3.916405259224409,
+    "bias": 3.3586310117166103,
+    "late_fraction": 0.54,
+    "n": 200
+   },
+   "train_time_s": 3.218628083006479,
+   "n_params": 14500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-a429b1aa-s0-20261111T032921484033Z",
+   "score": 14.054009351403064,
+   "val_points_capped": {
+    "rmse": 14.054009351403064,
+    "mae": 10.24332730686931,
+    "nasa_sum": 810.2891649595281,
+    "nasa_mean": 4.05144582479764,
+    "bias": 3.537180967635926,
+    "late_fraction": 0.53,
+    "n": 200
+   },
+   "train_time_s": 3.6590464579930995,
+   "n_params": 14500
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-8130f056-s0-20261111T032948280488Z",
+   "score": 14.651604865681259,
+   "val_points_capped": {
+    "rmse": 14.651604865681259,
+    "mae": 10.920624638487276,
+    "nasa_sum": 829.1681004384441,
+    "nasa_mean": 4.14584050219222,
+    "bias": 3.1114401020143974,
+    "late_fraction": 0.53,
+    "n": 200
+   },
+   "train_time_s": 7.522698290995322,
+   "n_params": 30500
+  },
+  {
+   "params": {
+    "learning_rate": 0.03,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-737fb115-s0-20261111T033018278246Z",
+   "score": 14.637127327091015,
+   "val_points_capped": {
+    "rmse": 14.637127327091015,
+    "mae": 10.671767407397436,
+    "nasa_sum": 860.0690413662082,
+    "nasa_mean": 4.300345206831041,
+    "bias": 3.329237077121038,
+    "late_fraction": 0.495,
+    "n": 200
+   },
+   "train_time_s": 7.809967042005155,
+   "n_params": 30500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 100,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-d4cd5138-s0-20261111T033046525104Z",
+   "score": 14.998138234847692,
+   "val_points_capped": {
+    "rmse": 14.998138234847692,
+    "mae": 11.086881428434912,
+    "nasa_sum": 889.3698498691346,
+    "nasa_mean": 4.446849249345672,
+    "bias": 3.2178562704351794,
+    "late_fraction": 0.545,
+    "n": 200
+   },
+   "train_time_s": 4.206748374999734,
+   "n_params": 30500
+  },
+  {
+   "params": {
+    "learning_rate": 0.1,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "max_iter": 500,
+    "l2_regularization": 0.0
+   },
+   "run_id": "hgb-6755bb17-s0-20261111T033100522258Z",
+   "score": 14.956546110870761,
+   "val_points_capped": {
+    "rmse": 14.956546110870761,
+    "mae": 10.867408728917058,
+    "nasa_sum": 922.593959662138,
+    "nasa_mean": 4.61296979831069,
+    "bias": 3.6081507771710175,
+    "late_fraction": 0.555,
+    "n": 200
+   },
+   "train_time_s": 3.3305407500010915,
+   "n_params": 30500
+  }
+ ]
+}
