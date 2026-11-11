@@ -1,0 +1,39 @@
+{
+ "family": "constant",
+ "grid": {},
+ "n_configs": 1,
+ "selected": {
+  "params": {},
+  "run_id": "constant-68aa15a3-s0-20261111T031602387120Z",
+  "score": 40.43990427895041,
+  "val_points_capped": {
+   "rmse": 40.43990427895041,
+   "mae": 34.97596206665039,
+   "nasa_sum": 39857.63518536486,
+   "nasa_mean": 199.2881759268243,
+   "bias": 0.34037933349609373,
+   "late_fraction": 0.45,
+   "n": 200
+  },
+  "train_time_s": 0.00013287499314174056,
+  "n_params": 1
+ },
+ "rows": [
+  {
+   "params": {},
+   "run_id": "constant-68aa15a3-s0-20261111T031602387120Z",
+   "score": 40.43990427895041,
+   "val_points_capped": {
+    "rmse": 40.43990427895041,
+    "mae": 34.97596206665039,
+    "nasa_sum": 39857.63518536486,
+    "nasa_mean": 199.2881759268243,
+    "bias": 0.34037933349609373,
+    "late_fraction": 0.45,
+    "n": 200
+   },
+   "train_time_s": 0.00013287499314174056,
+   "n_params": 1
+  }
+ ]
+}

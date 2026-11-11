@@ -1,0 +1,39 @@
+{
+ "family": "life_prior",
+ "grid": {},
+ "n_configs": 1,
+ "selected": {
+  "params": {},
+  "run_id": "life_prior-19a0db3c-s0-20261111T031605954743Z",
+  "score": 30.929215090165965,
+  "val_points_capped": {
+   "rmse": 30.929215090165965,
+   "mae": 21.273312500000003,
+   "nasa_sum": 13493.30946908512,
+   "nasa_mean": 67.4665473454256,
+   "bias": 5.931187500000004,
+   "late_fraction": 0.475,
+   "n": 200
+  },
+  "train_time_s": 0.01176116699934937,
+  "n_params": 1
+ },
+ "rows": [
+  {
+   "params": {},
+   "run_id": "life_prior-19a0db3c-s0-20261111T031605954743Z",
+   "score": 30.929215090165965,
+   "val_points_capped": {
+    "rmse": 30.929215090165965,
+    "mae": 21.273312500000003,
+    "nasa_sum": 13493.30946908512,
+    "nasa_mean": 67.4665473454256,
+    "bias": 5.931187500000004,
+    "late_fraction": 0.475,
+    "n": 200
+   },
+   "train_time_s": 0.01176116699934937,
+   "n_params": 1
+  }
+ ]
+}

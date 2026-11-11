@@ -1,0 +1,164 @@
+{
+ "spec": {
+  "families": [
+   "hgb",
+   "lstm"
+  ],
+  "r_max": [
+   115,
+   125,
+   135,
+   null
+  ],
+  "window": [
+   20,
+   30
+  ]
+ },
+ "rows": [
+  {
+   "family": "hgb",
+   "r_max": 115,
+   "window": 20,
+   "run_id": "hgb-0b5b69ea-s0-20261111T033243186092Z",
+   "val_rmse_cap125": 15.112463818576247,
+   "val_rmse_uncapped": 33.451553287029405,
+   "val_nasa_mean_cap125": 4.158928415032335
+  },
+  {
+   "family": "hgb",
+   "r_max": 115,
+   "window": 30,
+   "run_id": "hgb-74baa107-s0-20261111T033254528944Z",
+   "val_rmse_cap125": 14.48756911304158,
+   "val_rmse_uncapped": 33.41131452810084,
+   "val_nasa_mean_cap125": 3.29937581567095
+  },
+  {
+   "family": "hgb",
+   "r_max": 125,
+   "window": 20,
+   "run_id": "hgb-ca7de2ec-s0-20261111T033307544837Z",
+   "val_rmse_cap125": 15.476807904208652,
+   "val_rmse_uncapped": 30.789863717058463,
+   "val_nasa_mean_cap125": 5.566509667002012
+  },
+  {
+   "family": "hgb",
+   "r_max": 125,
+   "window": 30,
+   "run_id": "hgb-5519d90b-s0-20261111T033318900084Z",
+   "val_rmse_cap125": 13.996559849506223,
+   "val_rmse_uncapped": 30.519215967808716,
+   "val_nasa_mean_cap125": 4.0080159723827355
+  },
+  {
+   "family": "hgb",
+   "r_max": 135,
+   "window": 20,
+   "run_id": "hgb-aa8dfc0b-s0-20261111T033328665470Z",
+   "val_rmse_cap125": 17.430657175330413,
+   "val_rmse_uncapped": 29.103616576437503,
+   "val_nasa_mean_cap125": 8.224802170564756
+  },
+  {
+   "family": "hgb",
+   "r_max": 135,
+   "window": 30,
+   "run_id": "hgb-803325d4-s0-20261111T033341945351Z",
+   "val_rmse_cap125": 16.270693690602236,
+   "val_rmse_uncapped": 28.76559258551363,
+   "val_nasa_mean_cap125": 6.4566299999305325
+  },
+  {
+   "family": "hgb",
+   "r_max": null,
+   "window": 20,
+   "run_id": "hgb-16797ec2-s0-20261111T033351070733Z",
+   "val_rmse_cap125": 34.172107171155986,
+   "val_rmse_uncapped": 30.52199528415392,
+   "val_nasa_mean_cap125": 573.5855163477249
+  },
+  {
+   "family": "hgb",
+   "r_max": null,
+   "window": 30,
+   "run_id": "hgb-8a784cc2-s0-20261111T033400190354Z",
+   "val_rmse_cap125": 32.24080023402474,
+   "val_rmse_uncapped": 28.67923753309828,
+   "val_nasa_mean_cap125": 956.1588503379432
+  },
+  {
+   "family": "lstm",
+   "r_max": 115,
+   "window": 20,
+   "run_id": "lstm-118ade8b-s0-20261111T033410858167Z",
+   "val_rmse_cap125": 15.232871793214587,
+   "val_rmse_uncapped": 34.46452349017369,
+   "val_nasa_mean_cap125": 3.34904749799553
+  },
+  {
+   "family": "lstm",
+   "r_max": 115,
+   "window": 30,
+   "run_id": "lstm-52ccef5e-s0-20261111T033420996591Z",
+   "val_rmse_cap125": 14.211450617999516,
+   "val_rmse_uncapped": 34.04477594303854,
+   "val_nasa_mean_cap125": 2.7145640464421286
+  },
+  {
+   "family": "lstm",
+   "r_max": 125,
+   "window": 20,
+   "run_id": "lstm-f65ed8ca-s0-20261111T033439574834Z",
+   "val_rmse_cap125": 14.66508233845331,
+   "val_rmse_uncapped": 32.04295102732467,
+   "val_nasa_mean_cap125": 3.5293917953631073
+  },
+  {
+   "family": "lstm",
+   "r_max": 125,
+   "window": 30,
+   "run_id": "lstm-21b05424-s0-20261111T033450646021Z",
+   "val_rmse_cap125": 13.582891372265017,
+   "val_rmse_uncapped": 31.09807872687789,
+   "val_nasa_mean_cap125": 3.047121949754129
+  },
+  {
+   "family": "lstm",
+   "r_max": 135,
+   "window": 20,
+   "run_id": "lstm-0631453d-s0-20261111T033507449555Z",
+   "val_rmse_cap125": 15.425518219636523,
+   "val_rmse_uncapped": 29.396001475128717,
+   "val_nasa_mean_cap125": 4.298214708328979
+  },
+  {
+   "family": "lstm",
+   "r_max": 135,
+   "window": 30,
+   "run_id": "lstm-60967d46-s0-20261111T033516217974Z",
+   "val_rmse_cap125": 14.570824432526758,
+   "val_rmse_uncapped": 28.619727504637282,
+   "val_nasa_mean_cap125": 4.050309104655482
+  },
+  {
+   "family": "lstm",
+   "r_max": null,
+   "window": 20,
+   "run_id": "lstm-74b8eefa-s0-20261111T033530767092Z",
+   "val_rmse_cap125": 29.0206788755864,
+   "val_rmse_uncapped": 25.28301979020343,
+   "val_nasa_mean_cap125": 139.41236114589333
+  },
+  {
+   "family": "lstm",
+   "r_max": null,
+   "window": 30,
+   "run_id": "lstm-42f36d72-s0-20261111T033541807498Z",
+   "val_rmse_cap125": 25.710159541745373,
+   "val_rmse_uncapped": 24.08889421272591,
+   "val_nasa_mean_cap125": 186.55288221634896
+  }
+ ]
+}
