@@ -80,6 +80,16 @@ def source_provenance(snapshot_dir: str | Path | None = None) -> dict:
     return out
 
 
+def verify_snapshot(path: str | Path, sha256: str) -> bool:
+    """Recompute a snapshot's content hash (same definition as ``source_provenance``)."""
+    with tarfile.open(path) as tar:
+        files = {m.name: tar.extractfile(m).read() for m in tar.getmembers()}
+    h = hashlib.sha256(files["tracked.diff"])
+    for name in sorted(n for n in files if n.startswith("untracked/")):
+        h.update(name.removeprefix("untracked/").encode() + b"\0" + files[name])
+    return h.hexdigest() == sha256
+
+
 def experiment_dir(root: str | Path, category: str, name: str, force: bool = False) -> Path:
     """results/phase2/<category>/<name>/ - refuses to reuse an existing directory unless forced,
     so published or earlier experiment outputs are never silently overwritten."""
