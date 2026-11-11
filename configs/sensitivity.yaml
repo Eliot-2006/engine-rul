@@ -1,0 +1,4 @@
+# EXP-04: validation-only sensitivity, seed 0, using the tuned configs in configs/final/.
+families: [hgb, lstm]
+r_max: [115, 125, 135, null]
+window: [20, 30]

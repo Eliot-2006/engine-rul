@@ -1,0 +1,5 @@
+# Strongest regularization first: ties (within 0.01 RMSE) resolve to the simpler model.
+# PRD grid was logspace(-3, 3); the first tuning run selected the boundary value 1000 with
+# monotone improvement, so the grid was extended upward to 1e5 (validation-only; see
+# docs/decisions.md D-03).
+alpha: [100000.0, 31622.78, 10000.0, 3162.278, 1000.0, 316.2278, 100.0, 31.6228, 10.0, 3.1623, 1.0, 0.3162, 0.1, 0.03162, 0.01, 0.003162, 0.001]
