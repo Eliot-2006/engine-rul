@@ -92,19 +92,31 @@ window.addEventListener("resize", () => {
 });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => redraws.forEach((d) => d()));
 
+// Segmented control with the ARIA radio-group keyboard pattern: one tab stop, arrow keys move and select.
 function seg<T extends string | number>(host: HTMLElement, options: [T, string][], value: T, onChange: (v: T) => void) {
-  host.replaceChildren(
-    ...options.map(([v, label]) => {
-      const b = el("button", { type: "button", textContent: label });
-      b.setAttribute("role", "radio");
-      b.setAttribute("aria-checked", String(v === value));
-      b.addEventListener("click", () => {
-        host.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
-        onChange(v);
+  const buttons = options.map(([v, label]) => {
+    const b = el("button", { type: "button", textContent: label, tabIndex: v === value ? 0 : -1 });
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(v === value));
+    b.addEventListener("click", () => {
+      buttons.forEach((x) => {
+        x.setAttribute("aria-checked", String(x === b));
+        x.tabIndex = x === b ? 0 : -1;
       });
-      return b;
-    }),
-  );
+      onChange(v);
+    });
+    return b;
+  });
+  host.onkeydown = (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (!step || i < 0) return;
+    e.preventDefault();
+    const next = buttons[(i + step + buttons.length) % buttons.length];
+    next.focus();
+    next.click();
+  };
+  host.replaceChildren(...buttons);
 }
 
 function fillSelect(sel: HTMLSelectElement, options: [string, string][], value: string, onChange: (v: string) => void) {
@@ -222,6 +234,10 @@ function overview(meta: Meta, test: OfficialTest, cv: CV | null) {
     );
   }
   $("cards").replaceChildren(...cards);
+  $("takeaway").textContent =
+    `On the ${test.n_engines} official test engines, ${LABEL[h.best_family].toLowerCase()} predicts remaining life with a root-mean-square error of ` +
+    `${f2(h.best_rmse)} cycles, ${h.rmse_reduction_pct.toFixed(1)}% lower than the ${f2(h.baseline_rmse)} cycles of a baseline that only knows how long the engine has run: ` +
+    `the sensor readings add real information beyond elapsed time.`;
   $("disclaimer").textContent = meta.disclaimer;
 }
 
@@ -804,21 +820,33 @@ function benchmarks(b: Benchmarks) {
 
 // ---------------------------------------------------------------- boot
 
+// A chart still showing its loading placeholder was never drawn: say why instead of waiting forever.
+const settle = (why: string) =>
+  document.querySelectorAll("figure.chart > .status").forEach((p) => p.replaceWith(el("p", { className: "error", textContent: why })));
+
 async function main() {
   const [meta, test] = await Promise.all([load("meta.json"), load("official_test.json")]).catch((e) => {
     $("cards").replaceChildren(el("p", { className: "error", textContent: `Could not load results: ${(e as Error).message}` }));
+    settle("Not drawn: the core results could not be loaded (see the message at the top of the page).");
     throw e;
   });
   for (const f of meta.families) LABEL[f.id] = f.label;
-  const opt = <T,>(p: Promise<T>) => p.catch((e) => (console.error(e), null));
+  const failed: Record<string, string> = {};
+  const opt = <T,>(file: string, p: Promise<T>) =>
+    p.catch((e) => {
+      failed[file] = (e as Error).message;
+      console.error(e);
+      return null;
+    });
   const [val, cv, ab, conf, bench] = await Promise.all([
-    opt(load("phase1_validation.json")),
-    opt(load("cv.json")),
-    opt(load("ablation.json")),
-    opt(load("conformal.json")),
-    opt(load("benchmarks.json")),
+    opt("phase1_validation.json", load("phase1_validation.json")),
+    opt("cv.json", load("cv.json")),
+    opt("ablation.json", load("ablation.json")),
+    opt("conformal.json", load("conformal.json")),
+    opt("benchmarks.json", load("benchmarks.json")),
   ]);
-  const missing = (id: string, file: string) => $(id).replaceChildren(el("p", { className: "error", textContent: `${file} could not be loaded.` }));
+  const missing = (id: string, file: string) =>
+    $(id).replaceChildren(el("p", { className: "error", textContent: `This section's data could not be loaded: ${failed[file] ?? file}.` }));
   await guard($("cards"), () => overview(meta, test, cv));
   await guard($("models-chart"), () => models(test));
   await guard($("test-scatter"), () => engines(test, val));
@@ -831,6 +859,7 @@ async function main() {
   else missing("unc-coverage", "conformal.json");
   if (bench) await guard($("bench-chart"), () => benchmarks(bench));
   else missing("bench-chart", "benchmarks.json");
+  settle("This chart could not be drawn because an earlier step in this section failed.");
   $("foot").innerHTML = "";
   $("foot").append(
     `Generated from committed experiment artifacts. Official test evaluated ${test.evaluated_at.slice(0, 10)} (commit ${short(test.git_commit)}). `,

@@ -648,6 +648,68 @@ def hero_figure(official: dict, path: str | Path) -> Path:
     return path
 
 
+SOCIAL_SIZE = (1200, 630)  # Open Graph / Twitter large-card size, pixels
+
+
+def social_card(official: dict, path: str | Path) -> Path:
+    """The dashboard's link-preview image: project, dataset and the headline official-test result."""
+    from engine_rul import plots as P
+    from engine_rul.report_phase2 import COLORS
+
+    P.style()
+    plt = P.plt
+    h = official["headline"]
+    best = h["best_family"]
+    ink, ink2, page = "#0b0b0b", "#52514e", "#f9f9f7"
+    fig = plt.figure(figsize=(SOCIAL_SIZE[0] / 100, SOCIAL_SIZE[1] / 100), dpi=100, facecolor=page)
+    text = lambda x, y, s, **kw: fig.text(x, y, s, color=kw.pop("color", ink), **kw)  # noqa: E731
+    text(0.055, 0.83, "EngineRUL", fontsize=40, fontweight="bold")
+    text(
+        0.055,
+        0.745,
+        "Remaining-useful-life prediction for turbofan engines",
+        fontsize=17,
+        color=ink2,
+    )
+    text(0.055, 0.53, f"{h['best_rmse']:.2f} cycles", fontsize=58, fontweight="bold")
+    text(
+        0.055,
+        0.455,
+        f"best official test RMSE ({FAMILY_LABELS[best].lower()})",
+        fontsize=17,
+        color=ink2,
+    )
+    text(
+        0.055,
+        0.33,
+        f"\u2212{h['rmse_reduction_pct']:.1f}% RMSE vs the cycle-only baseline\n"
+        f"{official['n_engines']} official test engines, evaluated once",
+        fontsize=17,
+        linespacing=1.5,
+    )
+    text(
+        0.055,
+        0.075,
+        f"NASA C-MAPSS {official['dataset'].split()[-1]} \u00b7 simulated data, not validated for real aircraft",
+        fontsize=13,
+        color=ink2,
+    )
+    a = fig.add_axes((0.665, 0.14, 0.295, 0.295 * SOCIAL_SIZE[0] / SOCIAL_SIZE[1]), facecolor=page)
+    t = np.array([e["y_true"] for e in official["engines"]])
+    y = np.array([e["pred"][best] for e in official["engines"]])
+    lim = 160
+    a.plot([0, lim], [0, lim], color="#898781", lw=1.2, ls="--", zorder=1)
+    a.scatter(t, y, s=26, color=COLORS[best], edgecolor=page, lw=0.6, zorder=2)
+    a.set(xlim=(0, lim), ylim=(0, lim), xlabel="True RUL (cycles)", ylabel="Predicted RUL (cycles)")
+    a.set_title("Each dot: one test engine", fontsize=13, loc="left")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with plt.rc_context({"savefig.bbox": "standard"}):  # exact pixel size, no tight cropping
+        fig.savefig(path, dpi=100, facecolor=page, metadata={"Software": None})
+    plt.close(fig)
+    return path
+
+
 def _replace_block(text: str, name: str, block: str) -> str:
     start, end = f"<!-- {name}:START -->", f"<!-- {name}:END -->"
     if start not in text or end not in text:
@@ -680,11 +742,14 @@ def update_readme(
     results: str | Path = "results",
     readme: str | Path = REPO_ROOT / "README.md",
     hero: str | Path = REPO_ROOT / "reports" / "figures" / "readme" / "hero.png",
+    social: str | Path = REPO_ROOT / "dashboard" / "public" / "og.png",
 ) -> Path:
     readme = Path(readme)
     text = readme.read_text()
     for name, block in readme_blocks(results).items():
         text = _replace_block(text, name, block)
     readme.write_text(text)
-    hero_figure(official_test(Path(results)), hero)
+    official = official_test(Path(results))
+    hero_figure(official, hero)
+    social_card(official, social)
     return readme

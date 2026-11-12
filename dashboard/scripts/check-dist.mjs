@@ -21,6 +21,17 @@ for (const ref of refs) {
 }
 if (!refs.some((r) => r.endsWith(".js"))) fail("no script bundle referenced from index.html");
 
+// Link previews: canonical URL, Open Graph / Twitter image served from this bundle at 1200x630.
+const meta = (key) => html.match(new RegExp(`<meta\\s+(?:property|name)="${key}"\\s+content="([^"]+)"`))?.[1];
+const site = meta("og:url");
+if (!site || html.match(/<link rel="canonical" href="([^"]+)"/)?.[1] !== site) fail("canonical URL missing or different from og:url");
+for (const key of ["og:image", "twitter:image"]) {
+  if (meta(key) !== `${site}og.png`) fail(`${key} must be ${site}og.png`);
+}
+for (const key of ["og:title", "og:description", "og:image:alt", "twitter:card"]) if (!meta(key)) fail(`missing <meta> ${key}`);
+const png = readFileSync(join(dist, "og.png"));
+if (png.readUInt32BE(16) !== 1200 || png.readUInt32BE(20) !== 630) fail("og.png must be 1200x630");
+
 const protocols = {
   "meta.json": "meta",
   "official_test.json": "official_test",

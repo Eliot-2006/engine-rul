@@ -98,6 +98,15 @@ section {
 }
 section.intro { background: transparent; border: 0; padding: 32px 0 8px; }
 .lede { font-size: 1.08rem; color: var(--ink-2); max-width: 72ch; }
+.eyebrow { font-size: 0.82rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.takeaway { font-size: 1.02rem; color: var(--ink); max-width: 78ch; margin: 0 0 20px; }
+
+/* Prediction pipeline: four steps in a row, stacked on narrow screens. */
+.flow { list-style: none; padding: 0; margin: 20px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; max-width: 900px; }
+.flow li { position: relative; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 14px; }
+.flow strong { display: block; font-size: 0.95rem; }
+.flow span { display: block; font-size: 0.84rem; color: var(--ink-2); line-height: 1.4; margin-top: 2px; }
+.flow li + li::before { content: "→" / ""; position: absolute; left: -22px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1.1rem; }
 .section-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .section-head h2, .section-head h3 { margin: 0; }
 .section-head.sub { margin-top: 32px; }
@@ -197,11 +206,18 @@ tr.best td { font-weight: 650; }
 .caveats li { margin: 0.5rem 0; }
 .foot { color: var(--muted); font-size: 0.85rem; padding-bottom: 40px; }
 
+@media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
   section { padding: 18px 16px; border-radius: 10px; }
   .detail { padding: 14px 12px; }
   .detail th, .detail td { padding: 7px 6px; }
   .two, .two.wide-left, .protocols { grid-template-columns: 1fr; gap: 16px; }
+  .flow { grid-template-columns: 1fr; gap: 16px; }
+  .flow li { padding: 7px 12px; }
+  .flow strong, .flow span { display: inline; }
+  .flow span::before { content: " · " / ""; color: var(--muted); }
+  .flow li + li::before { content: "↓" / ""; left: 16px; top: -17px; transform: none; font-size: 0.9rem; }
   .card .v { font-size: 1.6rem; }
   .top nav .gh { margin-left: 0; }
 }
