@@ -60,10 +60,19 @@ during implementation. Anything that changes a frozen config after a test evalua
 |---|---|---|
 | P3-01 | Static dashboard (Vite + TypeScript + Observable Plot) fed by JSON exported from committed artifacts; no backend or live inference | Free GitHub Pages hosting; nothing to keep running. Observable Plot (~100 KB gzipped bundle in total) instead of Plotly (~1 MB) covers tooltips and every chart type needed. |
 | P3-02 | One JSON file per evaluation protocol, tagged with `protocol`; the frontend refuses a file whose tag doesn't match the chart | Official-test and validation-only numbers use different targets and cut points and must never be plotted together by accident. |
-| P3-03 | `make reproduce` = Phase 1 training + Phase 2 + reports; the official test evaluation is `make official-test-eval CONFIRM=official-test` | Default workflows never read the test labels; re-evaluating is deliberate and still logged. |
+| P3-03 | `make reproduce` = Phase 1 training + Phase 2 + reports; the official test evaluation is `make official-test-eval CONFIRM=official-test` | Default workflows never read the test labels; re-evaluating is deliberate and still logged. (Phase 4 moved reproduction to an isolated directory and dropped `reports` from it; see P4-01.) |
 | P3-04 | Commit (force-add) the source snapshots referenced by published Phase-2 manifests; a test fails if a published manifest references an uncommitted or mismatching snapshot | They were git-ignored, so the recorded provenance pointed at files only on the development machine. The committed archives are the originals (content hashes verified), not re-creations. |
 | P3-05 | README result blocks and the hero figure are generated (`engine-rul readme`) and a test fails if they are stale | No hand-maintained numbers in the README. |
 | P3-06 | Exported numbers are rounded once, to display precision (cycles: 2 decimals) | Rounding 13.2648 to 13.265 and formatting again would show 13.27; the README and dashboard must show the published 13.26. |
+
+## Phase 4 decisions (reliability and presentation; no metric changes)
+
+| ID | Decision | Rationale |
+|---|---|---|
+| P4-01 | Training and experiment targets write under `OUT` (default `build/reproduce/`), laid out like the repository; `OUT=.` targets the published locations, still guarded by `FORCE`. `make reproduce` = Phase 1 + Phase 2 only | On a fresh clone `make reproduce` stopped at the first `tune` (the frozen configs exist) and `make repro-check` refused (its committed output directory exists); the only way forward was `FORCE=--force`, which overwrites published artifacts. Now the documented commands run end to end and leave every published file untouched. |
+| P4-02 | `engine-rul benchmark` (Phase 1) refuses to overwrite an existing `benchmarks.json` without `--force`; without a `summary.json` it times the first seed in `final_runs.json` | It was the one published artifact that `make bench` overwrote silently. The median seed is chosen by test RMSE, which an isolated reproduction does not have; latency does not depend on the seed. |
+| P4-03 | Playwright browser tests (Chromium only) run in a separate `e2e` job against the exact bundle the `build` job produced; `deploy` needs both | Exercises the interactions, error states and layouts that unit tests cannot, without slowing the Python CI job; a dashboard that fails its browser tests is never deployed. |
+| P4-04 | The link-preview image (`dashboard/public/og.png`) is generated from `summary.json` by `engine-rul readme`; the static `index.html` description quotes the headline numbers and a test checks them against the results | Crawlers read the static HTML, not the data files, so the numbers must be in the page; the test keeps them from drifting. |
 
 ## Post-test changes
 
@@ -89,6 +98,10 @@ Changes made after that evaluation affect presentation only and do not touch any
   now reports pooled CV RMSE next to its own CI (previously the fold mean sat next to the pooled
   CI). New generated hero figure and a static dashboard built from the same committed numbers. The
   official test set was not evaluated again and no metric, config or model changed.
+
+- Phase 4: reproduction workflow isolation (P4-01, P4-02), browser and consistency tests, dashboard
+  accessibility and presentation, link-preview metadata and README edits. No result file under
+  `results/`, no frozen config and no model changed; the official test set was not evaluated again.
 
 The validation→test ranking flip between LSTM and gradient boosting was **not** acted on: the LSTM
 was not re-tuned and gradient boosting was not re-selected after seeing test results.

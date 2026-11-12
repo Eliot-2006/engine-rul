@@ -154,7 +154,8 @@ def cmd_benchmark(a):
         )
         print(f"wrote {out}")
         return 0
-    print(f"wrote {run_benchmarks(_families(a.family), a.results_dir, devices=tuple(a.devices))}")
+    out = run_benchmarks(_families(a.family), a.results_dir, tuple(a.devices), force=a.force)
+    print(f"wrote {out}")
     return 0
 
 

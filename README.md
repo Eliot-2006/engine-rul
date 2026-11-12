@@ -4,7 +4,9 @@ Predicting how many cycles a turbofan engine has left before failure, from the h
 
 **[Interactive results dashboard](https://eliot-2006.github.io/engine-rul/)** · [Phase 1 report](reports/report.md) · [Phase 2 report](reports/phase2_report.md) · [Methods](docs/phase2.md)
 
-[![ci](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml/badge.svg)](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml) Python · PyTorch · scikit-learn · pandas · NumPy · MLflow
+[![ci](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml/badge.svg)](https://github.com/Eliot-2006/engine-rul/actions/workflows/ci.yml) [![pages](https://github.com/Eliot-2006/engine-rul/actions/workflows/pages.yml/badge.svg)](https://github.com/Eliot-2006/engine-rul/actions/workflows/pages.yml)
+
+**Stack:** Python · PyTorch · scikit-learn · pandas · NumPy · MLflow · pytest · TypeScript · Vite · Observable Plot · Playwright · GitHub Actions / Pages
 
 > [!IMPORTANT]
 > C-MAPSS is **simulated** data. These results are not validated for real aircraft maintenance or flight-safety decisions.
@@ -21,7 +23,14 @@ Predicting how many cycles a turbofan engine has left before failure, from the h
 
 ![Left: gradient boosting's predicted vs true remaining useful life for the 100 official test engines, clustered around the diagonal. Right: test RMSE with 95% bootstrap intervals for all five models, from gradient boosting (13.26) to the constant baseline (41.88).](reports/figures/readme/hero.png)
 
-**Contents:** [Overview](#overview) · [Pipeline](#pipeline) · [Models and official results](#models-and-official-results) · [Validation-only findings](#validation-only-findings-phase-2) · [Quick start](#quick-start) · [Documentation](#documentation) · [Limitations](#limitations)
+**Highlights**
+
+- **Leakage-safe protocol.** Engine-level splits, preprocessing fit on training engines only, model selection on validation engines, and one logged evaluation of the frozen models on the official test set.
+- **Five models, one comparison.** Naive baselines through a PyTorch LSTM, scored at identical evaluation points with bootstrap and paired confidence intervals.
+- **Reliability study.** Nested cross-validation, feature ablations, conformal prediction intervals and latency benchmarks, all on training engines only.
+- **Engineering.** About 120 Python tests (unit, leakage, reproducibility, artifact consistency) plus Playwright browser tests in CI; isolated reproduction that never overwrites published results; a static dashboard deployed to GitHub Pages.
+
+**Contents:** [Overview](#overview) · [Pipeline](#pipeline) · [Models and official results](#models-and-official-results) · [Validation-only findings](#validation-only-findings-phase-2) · [Dashboard](#interactive-dashboard) · [Quick start](#quick-start) · [Documentation](#documentation) · [Limitations](#limitations)
 
 ## Overview
 
@@ -126,33 +135,43 @@ Gradient boosting's five seeds produce bit-identical models, so they are not ind
 - 90% split-conformal intervals, empirical coverage on held-out engines: Ridge 89% (mean width 54 cycles), Gradient boosting 91% (mean width 54 cycles), LSTM 94% (mean width 67 cycles).
 <!-- PHASE2:END -->
 
-Pooled RMSE is computed over all held-out predictions; the fold mean averages the 15 per-fold RMSEs. The CIs are approximate because repeated folds share training engines. The one-cut-point-per-engine conformal method has a finite-sample coverage guarantee under exchangeability; with 20 calibration engines per fold its realised coverage varies widely between folds, and no interval is guaranteed for the official test set's truncation process. Every number above can be explored interactively in the [dashboard](https://eliot-2006.github.io/engine-rul/):
+Pooled RMSE is computed over all held-out predictions; the fold mean averages the 15 per-fold RMSEs. The CIs are approximate because repeated folds share training engines. The one-cut-point-per-engine conformal method has a finite-sample coverage guarantee under exchangeability; with 20 calibration engines per fold its realised coverage varies widely between folds, and no interval is guaranteed for the official test set's truncation process.
 
-[![Dashboard overview: headline metric cards and the official-test model comparison chart](reports/figures/readme/dashboard.png)](https://eliot-2006.github.io/engine-rul/)
+## Interactive dashboard
+
+**[eliot-2006.github.io/engine-rul](https://eliot-2006.github.io/engine-rul/)** is a static page (no backend) built from the committed result files. Every section is labelled *Official test* or *Validation only*. Visitors can:
+
+- switch the model comparison between RMSE, MAE and NASA score, and show or hide models;
+- pick any of the 100 test engines, or click its point on the scatter plot, to see every model's prediction and error;
+- follow the frozen models' predictions over the full life of each validation engine;
+- browse nested-CV folds by cut-point strategy, the ablation effects per model, conformal coverage by method and level, and inference latency by batch size.
+
+[![Dashboard overview: the prediction pipeline, headline result cards and the official-test and validation-only protocol labels](reports/figures/readme/dashboard.png)](https://eliot-2006.github.io/engine-rul/)
 
 ## Quick start
 
-Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is installed automatically) and, for the dashboard only, Node.js ≥ 20.19.
+Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is installed automatically) and, for the dashboard only, Node.js ≥ 20.19. A laptop CPU is enough; no GPU is needed.
 
 ```bash
 make setup                 # uv sync --frozen
 make data                  # download FD001 (≈6 MB) and verify SHA-256 checksums
-make test                  # unit, leakage, reproducibility, dashboard-export and end-to-end tests
-make repro-check           # retrain the frozen configs, compare with published validation RMSE
+make test                  # unit, leakage, reproducibility, consistency and end-to-end tests
+make repro-check           # retrain the frozen configs (<1 min), compare with the published validation RMSE
 make reports               # reports, README blocks and dashboard data from committed results
 make dashboard             # build the static dashboard into dashboard/dist
-cd dashboard && npm run dev   # browse it locally
+make dashboard-test        # Playwright browser tests against that build
+cd dashboard && npm run dev   # browse it locally at http://localhost:5173/engine-rul/
 ```
 
-| Workflow | Command | Reads official test labels? |
-|---|---|---|
-| Phase 1 training + validation | `make reproduce-phase1` (~15 min CPU) | No |
-| Phase 2 validation experiments | `make phase2` (~1.5 h CPU) | No |
-| Reports, README, dashboard data | `make reports` | No (committed artifacts only) |
-| All of the above | `make reproduce` | No |
-| The original official test evaluation | `make official-test-eval CONFIRM=official-test` | **Yes**: appends a round to the evaluation log |
+| Workflow | Command | Writes to | Reads official test labels? |
+|---|---|---|---|
+| Phase 1 training + validation | `make reproduce-phase1` (~15 min CPU) | `build/reproduce/` | No |
+| Phase 2 validation experiments | `make phase2` (~1.5 h CPU; needs Phase 1 runs) | `build/reproduce/` | No |
+| Both of the above | `make reproduce` | `build/reproduce/` | No |
+| Reports, README, dashboard data | `make reports` | `reports/`, `README.md`, `dashboard/public/` (from committed results) | No |
+| The original official test evaluation | `make official-test-eval CONFIRM=official-test` | `results/final/`, evaluation log | **Yes**: appends a round to the log |
 
-Published artifacts are never overwritten unless `FORCE=--force` is given. Predict for new sensor files with `uv run engine-rul predict --run <run dir> --input <sensor file>`; models trained in Phase 2's conformal run add calibrated intervals (`--levels 0.8 0.9`). Committed results were produced on CPU (Apple M3 Pro), where training is bit-for-bit deterministic; CI re-runs the fast frozen configs on Linux and matches the published validation RMSE within 1e-3.
+Reproduction writes to `build/reproduce/` (change it with `OUT=<dir>`), laid out like the repository, so a fresh clone can retrain everything and compare with the published results without touching them; rerunning into the same directory refuses to overwrite unless `FORCE=--force` is given. Timings are from the development machine (Apple M3 Pro, CPU only), where training is bit-for-bit deterministic; CI re-runs the fast frozen configs on Linux and matches the published validation RMSE within 1e-3. Predict for new sensor files with `uv run engine-rul predict --run <run dir> --input <sensor file>`; models trained in Phase 2's conformal run add calibrated intervals (`--levels 0.8 0.9`).
 
 ## Documentation
 
@@ -166,7 +185,7 @@ Published artifacts are never overwritten unless `FORCE=--force` is given. Predi
 | Reproducibility, provenance and tests | [`docs/testing.md`](docs/testing.md) |
 | Module architecture and diagrams | [`docs/pipeline.md`](docs/pipeline.md) |
 | Design decisions and post-test changes | [`docs/decisions.md`](docs/decisions.md) |
-| Dashboard build and data export | [`dashboard/README.md`](dashboard/README.md) |
+| Dashboard build, data export and browser tests | [`dashboard/README.md`](dashboard/README.md) |
 
 ## Limitations
 

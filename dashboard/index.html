@@ -4,19 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>EngineRUL results</title>
+    <title>EngineRUL · Remaining useful life prediction</title>
     <meta
       name="description"
-      content="Interactive results for EngineRUL: remaining-useful-life prediction on NASA C-MAPSS FD001, official test results and validation-only experiments."
+      content="Interactive results for EngineRUL: remaining-useful-life prediction for simulated turbofan engines (NASA C-MAPSS FD001). Baselines, Ridge, gradient boosting and an LSTM; official test results and validation-only experiments."
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3l4 6 3-3 5 7' fill='none' stroke='%23eb6834' stroke-width='2'/%3E%3C/svg%3E" />
+    <link rel="canonical" href="https://eliot-2006.github.io/engine-rul/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="EngineRUL" />
+    <meta property="og:url" content="https://eliot-2006.github.io/engine-rul/" />
+    <meta property="og:title" content="EngineRUL · Remaining useful life prediction on NASA C-MAPSS" />
+    <meta
+      property="og:description"
+      content="Predicting how many cycles a simulated turbofan engine has left. Best official test RMSE 13.26 cycles (gradient boosting), 63.9% below a cycle-only baseline. Simulated data; not validated for real aircraft."
+    />
+    <meta property="og:image" content="https://eliot-2006.github.io/engine-rul/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="EngineRUL: best official test RMSE 13.26 cycles on NASA C-MAPSS FD001, with a scatter of predicted versus true remaining life for 100 test engines."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EngineRUL · Remaining useful life prediction on NASA C-MAPSS" />
+    <meta
+      name="twitter:description"
+      content="Best official test RMSE 13.26 cycles (gradient boosting), 63.9% below a cycle-only baseline. Simulated data; not validated for real aircraft."
+    />
+    <meta name="twitter:image" content="https://eliot-2006.github.io/engine-rul/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="EngineRUL: best official test RMSE 13.26 cycles on NASA C-MAPSS FD001, with a scatter of predicted versus true remaining life for 100 test engines."
+    />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="top">
       <div class="wrap top-inner">
         <a class="brand" href="#overview">EngineRUL</a>
-        <nav aria-label="Sections">
+        <nav aria-label="Dashboard sections">
           <a href="#models">Models</a>
           <a href="#engines">Engines</a>
           <a href="#cv">Cross-validation</a>
@@ -29,17 +58,27 @@
       </div>
     </header>
 
+    <noscript><p class="wrap error">This dashboard needs JavaScript to draw its charts. The same results are in the <a href="https://github.com/Eliot-2006/engine-rul#readme">README</a>.</p></noscript>
     <main id="main" class="wrap">
       <section id="overview" class="intro" aria-labelledby="overview-h">
-        <h1 id="overview-h">Remaining useful life of turbofan engines</h1>
+        <p class="eyebrow">Machine-learning project · NASA C-MAPSS FD001, simulated data</p>
+        <h1 id="overview-h">How many cycles does this engine have left?</h1>
         <p class="lede">
-          EngineRUL predicts how many operating cycles a jet engine has left before failure, from the
-          history of its 21 sensors. It compares two naive baselines, Ridge regression, gradient
-          boosting and a PyTorch LSTM on NASA's simulated C-MAPSS FD001 benchmark under one
-          leakage-safe protocol, then stress-tests the result with nested cross-validation,
-          ablations and conformal prediction intervals.
+          EngineRUL predicts the <strong>remaining useful life</strong> (RUL) of turbofan engines: the
+          number of operating cycles left before failure, from the history of 21 sensors. Knowing it
+          lets maintenance be planned before a breakdown instead of on a fixed schedule. Two naive
+          baselines, Ridge regression, gradient boosting and a PyTorch LSTM are compared under one
+          leakage-safe protocol, then stress-tested with nested cross-validation, ablations and
+          conformal prediction intervals.
         </p>
+        <ol class="flow" aria-label="How a prediction is made">
+          <li><strong>Sensor history</strong><span>21 sensors recorded every cycle</span></li>
+          <li><strong>Preprocessing</strong><span>scaled on training engines; last 30 cycles</span></li>
+          <li><strong>Trained model</strong><span>baselines, Ridge, gradient boosting, LSTM</span></li>
+          <li><strong>Predicted RUL</strong><span>remaining cycles before failure</span></li>
+        </ol>
         <div id="cards" class="cards" aria-live="polite"><p class="status">Loading results…</p></div>
+        <p class="takeaway" id="takeaway"></p>
         <div class="protocols">
           <div class="protocol">
             <span class="badge official">Official test</span>
@@ -73,13 +112,13 @@
           <div class="seg" role="radiogroup" aria-label="Metric" id="metric"></div>
           <div class="checks" id="models-pick" role="group" aria-label="Models shown"></div>
         </div>
-        <figure class="chart" id="models-chart" aria-describedby="models-cap"></figure>
-        <figcaption id="models-cap" class="cap"></figcaption>
+        <figure class="chart" id="models-chart" aria-label="Official test error by model" aria-describedby="models-cap"><p class="status">Loading…</p></figure>
+        <p id="models-cap" class="cap"></p>
         <div class="table-wrap" id="models-table"></div>
         <div class="two">
           <div>
             <h3>Paired differences (same 100 engines)</h3>
-            <figure class="chart" id="paired-chart"></figure>
+            <figure class="chart" id="paired-chart" aria-label="Paired test RMSE differences between models"><p class="status">Loading…</p></figure>
             <p class="cap">
               Δ RMSE of the first model minus the second, median-seed models, with a 95% paired
               engine-bootstrap CI. A difference is called clear only when the CI excludes 0.
@@ -130,7 +169,7 @@
           <label class="field">Model <select id="test-model"></select></label>
         </div>
         <div class="two wide-left">
-          <figure class="chart" id="test-scatter"></figure>
+          <figure class="chart" id="test-scatter" aria-label="Predicted versus true remaining life for the official test engines"><p class="status">Loading…</p></figure>
           <div id="test-detail" class="detail" aria-live="polite"></div>
         </div>
 
@@ -143,7 +182,7 @@
           <label class="field">Validation engine <select id="val-engine"></select></label>
           <div class="checks" id="traj-pick" role="group" aria-label="Models shown"></div>
         </div>
-        <figure class="chart" id="traj-chart"></figure>
+        <figure class="chart" id="traj-chart" aria-label="Predicted and true remaining life over the selected validation engine's life"><p class="status">Loading…</p></figure>
         <p class="cap">
           Solid black: true RUL (cycles until this engine failed). Dotted: the 125-cycle cap the
           models are trained on, so early-life predictions plateau by design. Hover for values and
@@ -168,13 +207,13 @@
         <div class="controls">
           <label class="field">Validation cut points <select id="cv-strategy"></select></label>
         </div>
-        <figure class="chart" id="cv-folds"></figure>
+        <figure class="chart" id="cv-folds" aria-label="RMSE of each learned model in each outer cross-validation fold"><p class="status">Loading…</p></figure>
         <p class="cap" id="cv-folds-cap"></p>
         <div class="table-wrap" id="cv-table"></div>
         <div class="two">
           <div>
             <h3>Paired differences</h3>
-            <figure class="chart" id="cv-paired"></figure>
+            <figure class="chart" id="cv-paired" aria-label="Paired cross-validation RMSE differences"><p class="status">Loading…</p></figure>
             <p class="cap" id="cv-paired-cap"></p>
           </div>
           <div class="prose">
@@ -193,7 +232,7 @@
         <div class="controls">
           <div class="seg" role="radiogroup" aria-label="Model" id="ab-family"></div>
         </div>
-        <figure class="chart" id="ab-chart"></figure>
+        <figure class="chart" id="ab-chart" aria-label="Change in RMSE for each ablation variant"><p class="status">Loading…</p></figure>
         <p class="cap" id="ab-cap"></p>
       </section>
 
@@ -213,7 +252,7 @@
         <div class="two">
           <div>
             <h3>Observed vs nominal coverage</h3>
-            <figure class="chart" id="unc-coverage"></figure>
+            <figure class="chart" id="unc-coverage" aria-label="Observed versus nominal interval coverage"><p class="status">Loading…</p></figure>
             <p class="cap">
               Dot: coverage over held-out engines. Bar: range across the 15 outer folds. Dashed:
               nominal level (perfect calibration).
@@ -221,7 +260,7 @@
           </div>
           <div>
             <h3>Mean interval width</h3>
-            <figure class="chart" id="unc-width"></figure>
+            <figure class="chart" id="unc-width" aria-label="Mean prediction-interval width"><p class="status">Loading…</p></figure>
             <p class="cap">Average full width of the interval, in cycles (narrower is more useful).</p>
           </div>
         </div>
@@ -229,7 +268,7 @@
         <div class="controls">
           <div class="seg" role="radiogroup" aria-label="Nominal level" id="unc-level"></div>
         </div>
-        <figure class="chart" id="unc-stage"></figure>
+        <figure class="chart" id="unc-stage" aria-label="Interval coverage by degradation stage"><p class="status">Loading…</p></figure>
         <p class="cap" id="unc-stage-cap"></p>
       </section>
 
@@ -243,7 +282,7 @@
           <div class="seg" role="radiogroup" aria-label="Scope" id="bench-scope"></div>
           <div class="seg" role="radiogroup" aria-label="Statistic" id="bench-stat"></div>
         </div>
-        <figure class="chart" id="bench-chart"></figure>
+        <figure class="chart" id="bench-chart" aria-label="Inference latency by batch size"><p class="status">Loading…</p></figure>
         <p class="cap" id="bench-cap"></p>
         <div class="table-wrap" id="bench-table"></div>
         <h3>Training cost (Phase 1, final models)</h3>
@@ -284,7 +323,7 @@
           <pre><code>make setup data      # uv environment + checksum-verified FD001
 make test            # unit, leakage and end-to-end tests
 make reports         # reports, README and this dashboard's data from committed results
-make reproduce       # retrain Phase 1 and rerun Phase 2 (never reads test labels)</code></pre>
+make reproduce       # retrain Phase 1, rerun Phase 2 into build/reproduce/ (never reads test labels)</code></pre>
           <p class="small">
             Everything on this page is read from JSON generated by
             <code>engine-rul export-dashboard</code> from the committed
