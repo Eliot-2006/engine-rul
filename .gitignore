@@ -21,7 +21,9 @@ results/*
 !results/phase2/
 results/phase2/**/models/
 results/phase2/repro/*/*/
-# dashboard: dependencies, build output and generated data (rebuilt from results/ by CI)
+# dashboard: dependencies, build output, generated data (rebuilt from results/ by CI), test output
 dashboard/node_modules/
 dashboard/dist/
 dashboard/public/data/
+dashboard/test-results/
+dashboard/playwright-report/

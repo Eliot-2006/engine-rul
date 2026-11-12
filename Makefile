@@ -14,7 +14,7 @@ OUT ?= build/reproduce
 ISO := --results-dir $(OUT)/results --final-dir $(OUT)/configs/final
 DEVICES ?= cpu$(if $(filter Darwin,$(shell uname -s)), mps)
 
-.PHONY: setup data split eda tune sensitivity final official-test-eval bench report reproduce-phase1 reproduce reports readme dashboard-data dashboard test lint cv-folds cv ablation conformal bench-phase2 report-phase2 phase2 repro-check
+.PHONY: setup data split eda tune sensitivity final official-test-eval bench report reproduce-phase1 reproduce reports readme dashboard-data dashboard dashboard-test test lint cv-folds cv ablation conformal bench-phase2 report-phase2 phase2 repro-check
 
 setup:        ; uv sync --frozen
 data:         ; $(RUN) data download
@@ -60,8 +60,11 @@ readme:       ; $(RUN) readme
 dashboard-data: ; $(RUN) export-dashboard
 reports: report report-phase2 readme dashboard-data
 reproduce: reproduce-phase1 phase2
-# Static results dashboard (dashboard/, Node >= 20.19): `make dashboard` builds dashboard/dist
+# Static results dashboard (dashboard/, Node >= 20.19): `make dashboard` builds dashboard/dist,
+# `make dashboard-test` runs the Playwright browser tests against that build (Chromium only).
 dashboard: dashboard-data
 	cd dashboard && npm ci && npm run check && npm run build
+dashboard-test: dashboard
+	cd dashboard && npx playwright install chromium && npm run e2e
 test:         ; uv run pytest -q
 lint:         ; uv run ruff check src tests

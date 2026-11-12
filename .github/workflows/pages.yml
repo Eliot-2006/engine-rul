@@ -1,5 +1,6 @@
 name: pages
-# Build the static results dashboard from committed artifacts on every PR; deploy it from main.
+# Build the static results dashboard from committed artifacts and browser-test the built bundle on
+# every PR; deploy it only from main, and only after the browser tests pass.
 # One-time setting: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
 on:
   push:
@@ -35,14 +36,48 @@ jobs:
         working-directory: dashboard
       - run: npm run build
         working-directory: dashboard
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
           path: dashboard/dist
 
+  # Playwright against the exact bundle built above, served under /engine-rul/ by `vite preview`.
+  e2e:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: dashboard/playwright-report
+          retention-days: 7
+
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: build
+    needs: [build, e2e]
     runs-on: ubuntu-latest
     permissions:
       pages: write
