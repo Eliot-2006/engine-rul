@@ -34,11 +34,22 @@ Last updated: 2026-11-10 (local). Status: **MVP complete; Phase 2 (validation-on
 | P2-M7 Reproducibility check | ✅ | `engine-rul repro-check`: all 5 frozen configs reproduce validation RMSE exactly; CI smoke step |
 | P2-M8 Report and docs | ✅ | `reports/phase2_report.md`, `docs/phase2.md`, README Phase-2 block (generated) |
 
+## Phase 4 milestones (reliability and presentation — no result, config or model changed)
+
+| Milestone | Status | Evidence |
+|---|---|---|
+| P4-M1 Isolated reproduction | ✅ | `make reproduce-phase1 OUT=<tmp>` from the committed code: 12 min 51 s, exit 0; every selected hyperparameter, config hash, sensitivity and per-seed validation RMSE identical to the published ones (\|Δ\| = 0); `make repro-check` 37 s, all OK; no tracked file changed |
+| P4-M2 Browser tests | ✅ | `dashboard/e2e/` (Playwright, Chromium): 15 tests, 22 runs with the 375-px mobile project; `e2e` CI job gates deployment |
+| P4-M3 Consistency checks | ✅ | `tests/test_consistency.py`: reports, README, dashboard data and link-preview text agree with `summary.json`; predictions reproduce the metrics; CI semantics; deterministic export |
+| P4-M4 Dashboard presentation and accessibility | ✅ | intro with prediction pipeline and takeaway; tablet layout; arrow-key radio groups; named charts; loading and per-section error states |
+| P4-M5 Link previews | ✅ | canonical, Open Graph and Twitter tags; generated 1200×630 `og.png`; favicon |
+
 ## Tests
 
 | Run | Result |
 |---|---|
-| `uv run pytest -q` (synthetic + real data) | **87 passed** (74 Phase 1 + 13 Phase 2) |
+| `uv run pytest -q` (synthetic + real data) | **120 passed** (74 Phase 1 + 14 Phase 2 + 24 Phase 3 + 8 consistency) |
+| `npm run e2e` (Playwright, Chromium) | **22 passed** (15 desktop + 7 mobile) |
 | `uv run ruff check src tests` | clean |
 | `uv run ruff format --check src tests` | clean |
 | `uvx mypy src --ignore-missing-imports` (not part of the PRD toolchain) | 27 findings, almost all "fitted attribute may be `None`" patterns in model/preprocessor classes; one real edge case (`train.final([])` with no families crashes). None affect recorded results |
@@ -90,7 +101,7 @@ See [`decisions.md`](decisions.md): ADR-14 (CPU training), D-02 (`data verify` r
 
 1. `make setup data` on a fresh clone; `uv run pytest -q` runs the whole suite.
 2. Reports, README blocks and dashboard data are regenerated without retraining via `make reports` (reads `results/final/` and `results/phase2/` only).
-3. `make reproduce-phase1 FORCE=--force` (~15 min CPU) retrains Phase 1 and **overwrites** published Phase-1 run artifacts; it does not touch the test set. To check reproducibility without touching anything, use `make repro-check`.
-4. Phase 2: `make phase2` (~1.5 h CPU) re-runs CV, ablations, conformal and benchmarks into `results/phase2/` (refuses to overwrite; add `FORCE=--force`), then `make report-phase2`.
+3. `make reproduce-phase1` (~15 min CPU) retrains Phase 1 into `build/reproduce/` (`OUT=<dir>` to change) without touching published artifacts or the test set. `make repro-check` (<1 min) is the quick automated comparison with the published validation RMSE.
+4. Phase 2: `make phase2` (~1.5 h CPU) re-runs CV, ablations, conformal, benchmarks and the Phase 2 report into the same `OUT` (refuses to overwrite; add `FORCE=--force`). `OUT=.` targets the published locations and also needs `FORCE=--force`.
 5. The official test evaluation is a separate opt-in: `make official-test-eval CONFIRM=official-test`. It appends a round to `results/test_evaluations.jsonl`, which must be explained in `docs/decisions.md`.
-6. Dashboard: `make dashboard`; deployment is `.github/workflows/pages.yml` (needs *Settings → Pages → Source: GitHub Actions* once).
+6. Dashboard: `make dashboard`, then `make dashboard-test` for the browser tests; deployment is `.github/workflows/pages.yml` (needs *Settings → Pages → Source: GitHub Actions* once) and runs only from `main` after the `e2e` job passes.
