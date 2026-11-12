@@ -230,3 +230,23 @@ def test_frozen_config_hashes_unchanged_by_phase2_fields():
     summary = json.loads((ROOT / "results" / "final" / "summary.json").read_text())
     for fam, v in summary["families"].items():
         assert load_config(ROOT / "configs" / "final" / f"{fam}.yaml").hash() == v["config_hash"]
+
+
+def test_phase1_benchmark_is_protected_and_needs_no_test_summary(tmp_path):
+    from engine_rul.benchmark import benchmark_runs, run_benchmarks
+
+    final = tmp_path / "final"
+    final.mkdir()
+    (final / "benchmarks.json").write_text("{}")
+    with pytest.raises(ConfigError, match="refusing to overwrite"):
+        run_benchmarks(["ridge"], tmp_path)  # fails before loading anything
+    # isolated reproduction: no summary.json (no test evaluation) -> first seed of final_runs.json
+    (tmp_path / "final_runs.json").write_text(
+        json.dumps({"lstm": ["l-s0", "l-s1"], "ridge": ["r"]})
+    )
+    runs, src = benchmark_runs(tmp_path, ["lstm", "ridge"])
+    assert runs == {"lstm": "l-s0", "ridge": "r"} and src.name == "final_runs.json"
+    # published layout: the median seed recorded in summary.json wins
+    fam = {"run_ids": ["l-s0", "l-s1"], "seeds": [0, 1], "median_seed": 1}
+    (final / "summary.json").write_text(json.dumps({"families": {"lstm": fam}}))
+    assert benchmark_runs(tmp_path, ["lstm"])[0] == {"lstm": "l-s1"}

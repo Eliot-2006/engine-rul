@@ -13,10 +13,12 @@ import numpy as np
 
 from engine_rul import data as D
 from engine_rul.config import from_dict
+from engine_rul.errors import ConfigError
 from engine_rul.features import WindowSet, build_windows
 from engine_rul.models import load_model
 from engine_rul.models.lstm import _sync
 from engine_rul.preprocess import Preprocessor
+from engine_rul.provenance import refuse_overwrite
 from engine_rul.utils import environment_info
 
 log = logging.getLogger(__name__)
@@ -76,21 +78,41 @@ def benchmark_run(run_dir: Path, device: str = "cpu", warmup=20, reps=200, tp_re
     }
 
 
+def benchmark_runs(results_dir: Path, families: list[str]) -> tuple[dict[str, str], Path]:
+    """Run id to benchmark per family, and the file it came from.
+
+    Published layout: the median-seed run recorded in ``final/summary.json``. An isolated
+    reproduction (``make reproduce``) has no test evaluation and so no summary; it uses the first
+    seed in ``final_runs.json`` instead (latency does not depend on the seed)."""
+    summary, registry = results_dir / "final" / "summary.json", results_dir / "final_runs.json"
+    if summary.exists():
+        fams = json.loads(summary.read_text())["families"]
+        return {
+            f: fams[f]["run_ids"][fams[f]["seeds"].index(fams[f]["median_seed"])] for f in families
+        }, summary
+    if registry.exists():
+        runs = json.loads(registry.read_text())
+        return {f: runs[f][0] for f in families}, registry
+    raise ConfigError(f"no {summary} or {registry}; run `engine-rul final` first")
+
+
 def run_benchmarks(
-    families: list[str], results_dir: str | Path = "results", devices=("cpu",)
+    families: list[str],
+    results_dir: str | Path = "results",
+    devices=("cpu",),
+    force: bool = False,
 ) -> Path:
     results_dir = Path(results_dir)
-    summary = json.loads((results_dir / "final" / "summary.json").read_text())
+    out = results_dir / "final" / "benchmarks.json"
+    refuse_overwrite([out], force)
+    run_ids, _ = benchmark_runs(results_dir, families)
     rows = []
     for f in families:
-        fam = summary["families"][f]
-        run_id = fam["run_ids"][fam["seeds"].index(fam["median_seed"])]
         for dev in (
             devices if f == "lstm" else ("cpu",)
         ):  # BENCH-06: accelerator only matters for torch
             log.info("benchmarking %s on %s", f, dev)
-            rows.append(benchmark_run(results_dir / run_id, device=dev))
-    out = results_dir / "final" / "benchmarks.json"
+            rows.append(benchmark_run(results_dir / run_ids[f], device=dev))
     out.write_text(json.dumps({"environment": environment_info(), "rows": rows}, indent=1) + "\n")
     return out
 
@@ -144,11 +166,10 @@ def run_phase2_benchmarks(
 
     results_dir = Path(results_dir)
     exp = experiment_dir(root, "benchmark", name, force)
-    summary = json.loads((results_dir / "final" / "summary.json").read_text())
+    run_ids, source = benchmark_runs(results_dir, families)
     rows = []
     for f in families:
-        fam = summary["families"][f]
-        run_dir = results_dir / fam["run_ids"][fam["seeds"].index(fam["median_seed"])]
+        run_dir = results_dir / run_ids[f]
         for dev in devices if f == "lstm" else ("cpu",):
             pr = Predictor(run_dir, device=dev)
             raw = D.load_train(pr.cfg.data.data_dir, pr.cfg.data.subset).drop(
@@ -198,7 +219,7 @@ def run_phase2_benchmarks(
             "name": name,
             "families": families,
             "devices": list(devices),
-            "source_runs": str(results_dir / "final" / "summary.json"),
+            "source_runs": str(source),
             "provenance": source_provenance(),
             "official_test_set_used": False,
         },

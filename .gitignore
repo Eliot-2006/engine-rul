@@ -7,6 +7,8 @@ data/
 mlruns/
 mlartifacts/
 mlflow.db
+# isolated reproduction outputs (`make reproduce`, OUT=build/reproduce by default)
+build/
 results/*
 !results/final/
 !results/test_evaluations.jsonl
